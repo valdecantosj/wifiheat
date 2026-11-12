@@ -90,6 +90,8 @@ public sealed class QueryViewModel : ObservableObject
 
     public async Task QueryAsync()
     {
+        if (!_owner.RequireUnit()) return;
+
         await _owner.RunAsync("Indicar puntos en el dibujo; cada clic actualiza la tarjeta (Esc o Enter termina).", async () =>
         {
             IsActive = true;

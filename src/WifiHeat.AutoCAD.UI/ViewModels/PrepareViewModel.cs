@@ -27,6 +27,8 @@ public sealed class AxisLayerViewModel(AxisLayerInfo info, Action changed) : Obs
 
     public string Note { get; } = info.IsSuggested ? "sugerida" : info.ExplicitOnly ? "solo si se elige" : "";
 
+    public string NoteSuffix => Note.Length == 0 ? "" : $" ({Note})";
+
     public bool IsSelected
     {
         get => _isSelected;
@@ -145,6 +147,7 @@ public sealed class PrepareViewModel : ObservableObject
 
     public async Task PickWindowAsync()
     {
+        if (!_owner.RequireUnit()) return;
         if (!TryGetMergeGap(out double gap)) return;
 
         await _owner.RunAsync("Indicar en el dibujo las dos esquinas de una ventana que abarque una sola planta (Esc cancela).", async () =>

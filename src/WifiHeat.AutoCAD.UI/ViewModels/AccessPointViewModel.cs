@@ -114,6 +114,8 @@ public sealed class AccessPointViewModel : ObservableObject
 
     public async Task PickAsync()
     {
+        if (!_owner.RequireUnit()) return;
+
         await _owner.RunAsync("Indicar la ubicación del AP en el dibujo (Esc cancela).", async () =>
         {
             Vec2? point = await _owner.Interaction.PickPointAsync("Ubicación del AP");
@@ -155,6 +157,12 @@ public sealed class AccessPointViewModel : ObservableObject
 
     private void ApplyPosition()
     {
+        if (!_owner.RequireUnit())
+        {
+            Update();
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_xText) || string.IsNullOrWhiteSpace(_yText))
         {
             if (!_hasAccessPoint) return;
@@ -216,7 +224,8 @@ public sealed class AccessPointViewModel : ObservableObject
             OperationResult<SimulationSettings> result = _owner.Service.Configure(wanted);
             _owner.Reload();
             if (!result.Succeeded) _owner.Report(StatusKind.Error, $"{string.Join(" ", result.Errors)} Se mantienen los valores anteriores.");
-            else _owner.Report(result, _owner.Calculation.IsOutdated ? "Parámetros actualizados. El mapa quedó desactualizado: volver a calcular." : "Parámetros actualizados.");
+            else if (_owner.Calculation.IsOutdated) _owner.Report(StatusKind.Warning, "Parámetros actualizados. El mapa quedó desactualizado: volver a calcular.");
+            else _owner.Report(result, "Parámetros actualizados.");
         });
         if (!done) ShowFields(current);
     }

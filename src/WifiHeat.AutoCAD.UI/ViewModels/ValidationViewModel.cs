@@ -69,6 +69,12 @@ public sealed class ValidationViewModel : ObservableObject
 
     public bool HasItems => Items.Count > 0;
 
+    public string WallsText => WallCount == 1 ? "1 muro" : $"{WallCount} muros";
+
+    public string ErrorsText => ErrorCount == 1 ? "1 error" : $"{ErrorCount} errores";
+
+    public string WarningsText => WarningCount == 1 ? "1 aviso" : $"{WarningCount} avisos";
+
     public string Summary => !HasRun
         ? "Todavía no se validó el plano."
         : $"{WallCount} muro(s) · {ErrorCount} error(es) · {WarningCount} aviso(s)";
@@ -115,5 +121,8 @@ public sealed class ValidationViewModel : ObservableObject
         OnPropertyChanged(nameof(HasItems));
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(EmptyText));
+        OnPropertyChanged(nameof(WallsText));
+        OnPropertyChanged(nameof(ErrorsText));
+        OnPropertyChanged(nameof(WarningsText));
     }
 }

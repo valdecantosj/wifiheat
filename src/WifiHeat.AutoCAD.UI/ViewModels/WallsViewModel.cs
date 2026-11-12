@@ -64,6 +64,8 @@ public sealed class WallRowViewModel : ObservableObject
 
     public string MaterialNote => MissingMaterial ? "Sin material" : UnknownMaterial ? $"Material desconocido: {_info.MaterialId}" : _material!.LossText;
 
+    public string MaterialPlaceholder => UnknownMaterial ? $"¿{_info.MaterialId}?" : "Sin material";
+
     public MaterialOption? Material
     {
         get => _material;
@@ -125,6 +127,7 @@ public sealed class WallRowViewModel : ObservableObject
         OnPropertyChanged(nameof(MissingMaterial));
         OnPropertyChanged(nameof(UnknownMaterial));
         OnPropertyChanged(nameof(MaterialNote));
+        OnPropertyChanged(nameof(MaterialPlaceholder));
     }
 
     internal void Revert() => Apply(_info, _owner.Option(_info.MaterialId));

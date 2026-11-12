@@ -130,6 +130,15 @@ public sealed class PanelViewModel : ObservableObject
         Query.Requery();
     }
 
+    /// <summary>Las acciones que piden o usan coordenadas del dibujo necesitan la unidad.</summary>
+    internal bool RequireUnit()
+    {
+        if (Prepare.HasUnit) return true;
+
+        Report(StatusKind.Warning, "Primero elegir la unidad del dibujo en «Preparar plano».");
+        return false;
+    }
+
     /// <summary>Ejecuta una acción del usuario. Devuelve false si no se pudo empezar o si falló de forma inesperada.</summary>
     internal bool Run(Action action)
     {

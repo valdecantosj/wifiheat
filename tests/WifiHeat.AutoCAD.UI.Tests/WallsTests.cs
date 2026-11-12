@@ -114,6 +114,7 @@ public class WallsTests
         Assert.True(row.UnknownMaterial);
         Assert.False(row.MissingMaterial);
         Assert.Contains("marble", row.MaterialNote);
+        Assert.Equal("¿marble?", row.MaterialPlaceholder);
     }
 
     [Fact]

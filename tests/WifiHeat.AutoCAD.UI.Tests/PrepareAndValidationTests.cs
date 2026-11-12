@@ -37,6 +37,38 @@ public class PrepareAndValidationTests
     }
 
     [Fact]
+    public async Task Without_unit_nothing_is_asked_in_the_drawing()
+    {
+        Sample s = Sample.Custom(d => d.Unit = null);
+        s.Interaction.Window = Window;
+        s.Interaction.Points.Enqueue(new Vec2(1, 1));
+        s.Interaction.Polyline = "2F";
+
+        await s.Panel.Prepare.PickWindowAsync();
+        await s.Panel.AccessPoint.PickAsync();
+        await s.Panel.Query.QueryAsync();
+        await s.Panel.Calculation.PickAreaAsync();
+        s.Panel.AccessPoint.XText = "1";
+        s.Panel.AccessPoint.YText = "2";
+
+        Assert.Empty(s.Interaction.Prompts);
+        Assert.Null(s.Drawing.AccessPoint);
+        Assert.Equal("", s.Panel.AccessPoint.XText);
+        Assert.Equal(StatusKind.Warning, s.Panel.StatusKind);
+        Assert.Contains("unidad", s.Panel.StatusMessage);
+    }
+
+    [Fact]
+    public void Counts_use_singular_and_plural()
+    {
+        Sample s = Sample.Custom(d => d.Add("A1", 0, 0, 5, 0, null, 0.2));
+
+        Assert.Equal("1 muro", s.Panel.Validation.WallsText);
+        Assert.Equal("1 error", s.Panel.Validation.ErrorsText);
+        Assert.Equal("0 avisos", s.Panel.Validation.WarningsText);
+    }
+
+    [Fact]
     public void Choosing_a_unit_saves_it_in_the_drawing()
     {
         Sample s = Sample.Custom(d => d.Unit = null);

@@ -158,6 +158,8 @@ public sealed class CalculationViewModel : ObservableObject
 
     public async Task PickAreaAsync()
     {
+        if (!_owner.RequireUnit()) return;
+
         await _owner.RunAsync("Seleccionar en el dibujo una polilínea cerrada de tramos rectos (Esc cancela).", async () =>
         {
             string? handle = await _owner.Interaction.PickPolylineAsync("Polilínea cerrada del área de cobertura");
