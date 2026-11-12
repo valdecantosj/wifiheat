@@ -96,8 +96,8 @@ public class HeatmapRasterizerTests
     [Fact]
     public void Neighbouring_pixels_change_gradually()
     {
-        var values = new double[10, 1];
-        for (int c = 0; c < 10; c++) values[c, 0] = -50 - 5 * c;
+        var values = new double[45, 1];
+        for (int c = 0; c < 45; c++) values[c, 0] = -48 - c;
 
         HeatmapImage image = HeatmapRasterizer.Render(Grid(values), 0.25, 153);
 
