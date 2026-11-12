@@ -12,13 +12,12 @@ namespace WifiHeat.AutoCAD.Commands;
 
 public sealed class WallCommands
 {
-    private const double DefaultThicknessM = 0.15;
+    public const double DefaultThicknessM = 0.15;
 
     /// <summary>Asigna material y espesor a líneas o polilíneas y las pasa a la capa de muros.</summary>
     [CommandMethod("WIFIWALL")]
-    public void AssignWall()
+    public void AssignWall() => CommandGuard.Run("WIFIWALL", doc =>
     {
-        Document doc = CoreApp.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         Editor ed = doc.Editor;
         MaterialCatalog catalog = MaterialCatalogFile.Catalog;
@@ -26,26 +25,27 @@ public sealed class WallCommands
         var selectionOptions = new PromptSelectionOptions { MessageForAdding = "\nSeleccionar líneas o polilíneas de muro" };
         var filter = new SelectionFilter([new TypedValue((int)DxfCode.Start, "LINE,LWPOLYLINE")]);
         PromptSelectionResult selection = ed.GetSelection(selectionOptions, filter);
-        if (selection.Status != PromptStatus.OK) return;
+        if (selection.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIWALL"); return; }
 
         string ids = string.Join("/", catalog.All.Select(m => m.Id));
         PromptResult materialAnswer = ed.GetString(new PromptStringOptions($"\nMaterial [{ids}]: ") { AllowSpaces = false });
-        if (materialAnswer.Status != PromptStatus.OK) return;
+        if (materialAnswer.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIWALL"); return; }
         if (!catalog.TryGet(materialAnswer.StringResult.Trim(), out Material material))
         {
-            ed.WriteMessage($"\nWIFIWALL: el material '{materialAnswer.StringResult}' no existe. Valores posibles: {ids}.\n");
+            ed.WriteMessage($"\nWIFIWALL: el material '{materialAnswer.StringResult}' no existe. Valores posibles: {ids}. No se modificó ningún muro.\n");
             return;
         }
 
-        var thicknessOptions = new PromptDoubleOptions("\nEspesor en metros")
+        var thicknessOptions = new PromptDoubleOptions(string.Create(CultureInfo.GetCultureInfo("es-AR"),
+            $"\nEspesor en metros o Enter para conservar el de cada muro ({DefaultThicknessM:0.00} si no tiene)"))
         {
             AllowNegative = false,
             AllowZero = false,
-            DefaultValue = DefaultThicknessM,
-            UseDefaultValue = true,
+            AllowNone = true,
         };
         PromptDoubleResult thicknessAnswer = ed.GetDouble(thicknessOptions);
-        if (thicknessAnswer.Status != PromptStatus.OK) return;
+        if (thicknessAnswer.Status is not (PromptStatus.OK or PromptStatus.None)) { CommandGuard.Cancelled(ed, "WIFIWALL"); return; }
+        double? thickness = thicknessAnswer.Status == PromptStatus.OK ? thicknessAnswer.Value : null;
 
         int count = 0;
         using (Transaction tr = db.TransactionManager.StartTransaction())
@@ -54,7 +54,8 @@ public sealed class WallCommands
             foreach (ObjectId id in selection.Value.GetObjectIds())
             {
                 var entity = (Entity)tr.GetObject(id, OpenMode.ForWrite);
-                WifiXData.WriteWall(entity, material.Id, thicknessAnswer.Value);
+                double value = thickness ?? WifiXData.ReadWall(entity).ThicknessM ?? DefaultThicknessM;
+                WifiXData.WriteWall(entity, material.Id, value);
                 entity.Layer = WifiHeatNames.WallLayer;
                 count++;
             }
@@ -62,7 +63,7 @@ public sealed class WallCommands
             tr.Commit();
         }
 
-        ed.WriteMessage(string.Create(CultureInfo.GetCultureInfo("es-AR"),
-            $"\nWIFIWALL: {count} muro(s) con material {material.Name} ({material.Id}) y espesor {thicknessAnswer.Value:0.###} m.\n"));
-    }
+        string thicknessText = thickness is null ? "espesor conservado" : string.Create(CultureInfo.GetCultureInfo("es-AR"), $"espesor {thickness:0.###} m");
+        ed.WriteMessage($"\nWIFIWALL: {count} muro(s) con material {material.Name} ({material.Id}) y {thicknessText}.\n");
+    });
 }
