@@ -35,6 +35,20 @@ Orden de uso: `WIFISETUP` → `WIFIWALL` → `WIFIVALIDATE` → `WIFIADDAP` → 
 
 Cada muro se dibuja como un eje (una línea o polilínea de tramos rectos por muro). El trayecto directo suma una vez la pérdida de cada eje que cruza.
 
+## Probar con el ejemplo
+
+`samples/demo.dwg` es una casa sintética de 12 × 8 m con tres ambientes: muros exteriores de hormigón (0,20 m), tabiques de placa de yeso (0,10 m) y un punto de acceso en (3; 4) m, todo ya asignado.
+
+1. Abrir `samples/demo.dwg` en AutoCAD 2027.
+2. Ejecutar `NETLOAD` y elegir `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows\WifiHeat.AutoCAD.dll` (compilar antes con `dotnet build WifiHeat.slnx`).
+3. Ejecutar `SCRIPT` y elegir `samples/demo.scr`. Valida los muros, calcula el mapa, consulta dos puntos —(6; 6) m sin muros de por medio y (10; 2) m con un tabique— y exporta `samples/demo-wifiheat.png`.
+
+Notas:
+
+- Con `SECURELOAD` activo, `NETLOAD` exige que la carpeta del plugin esté en `TRUSTEDPATHS`: agregar `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows`. Si AutoCAD bloquea también el script, agregar la carpeta `samples`.
+- `demo.scr` ejecuta además `NETLOAD` con la ruta relativa a `demo.dwg`, así que el paso 2 solo es imprescindible si ese `NETLOAD` es bloqueado.
+- No desactivar `SECURELOAD`.
+
 ## Estructura
 
 - `src/WifiHeat.Core`: modelo de propagación, geometría, materiales y grilla; no depende de AutoCAD.

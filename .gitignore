@@ -32,3 +32,6 @@ Thumbs.db
 
 # Planos sin permiso de publicación
 samples/private/
+
+# Salida generada al probar el ejemplo
+samples/*-wifiheat.png
