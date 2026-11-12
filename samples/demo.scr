@@ -1,6 +1,7 @@
 (command "_.NETLOAD" (strcat (getvar "DWGPREFIX") "../src/WifiHeat.AutoCAD/bin/Debug/net10.0-windows/WifiHeat.AutoCAD.dll"))
 WIFIVALIDATE
 WIFICALCULATE
+
 WIFIQUERY
 8,5
 WIFIQUERY

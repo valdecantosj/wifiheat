@@ -1,3 +1,4 @@
+using System.Globalization;
 using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Materials;
 using WifiHeat.Core.Propagation;
@@ -12,6 +13,8 @@ namespace WifiHeat.Core.Workflow;
 public sealed class SimulationSession(MaterialCatalog catalog)
 {
     public const double DefaultCellSizeM = 0.5;
+    public const double MinCellSizeM = 0.10;
+    public const double MaxCellSizeM = 5;
 
     private const double MinAreaSideM = 1e-6;
 
@@ -72,7 +75,7 @@ public sealed class SimulationSession(MaterialCatalog catalog)
     public OperationResult<RadioSettings> Configure(RadioSettings settings, double cellSizeM)
     {
         var errors = settings.Validate().ToList();
-        if (cellSizeM is < 0.05 or > 5) errors.Add("La resolución debe estar entre 0,05 y 5 m.");
+        if (ResolutionError(cellSizeM) is { } resolution) errors.Add(resolution);
         if (errors.Count > 0) return new(null, errors, []);
 
         Settings = settings;
@@ -80,6 +83,21 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         LastGrid = null;
         return OperationResult<RadioSettings>.Ok(settings);
     }
+
+    /// <summary>Tamaño de celda de la grilla, en metros. El tope por cantidad de celdas se controla al calcular.</summary>
+    public OperationResult<double> SetResolution(double cellSizeM)
+    {
+        if (ResolutionError(cellSizeM) is { } error) return OperationResult<double>.Fail(error);
+
+        CellSizeM = cellSizeM;
+        LastGrid = null;
+        return OperationResult<double>.Ok(cellSizeM);
+    }
+
+    public static string? ResolutionError(double cellSizeM) =>
+        double.IsFinite(cellSizeM) && cellSizeM >= MinCellSizeM && cellSizeM <= MaxCellSizeM
+            ? null
+            : string.Create(CultureInfo.GetCultureInfo("es-AR"), $"La resolución debe estar entre {MinCellSizeM:0.00} y {MaxCellSizeM:0} m.");
 
     public OperationResult<RssiGrid> Calculate()
     {

@@ -27,6 +27,8 @@ public sealed class CalculateCommands
         Editor ed = doc.Editor;
         SimulationSession session = Sessions.For(doc);
 
+        if (!AskResolution(ed, session)) return;
+
         ValidationReport report = ValidateCommands.LoadWalls(doc);
         if (!report.IsValid)
         {
@@ -77,6 +79,38 @@ public sealed class CalculateCommands
         ed.WriteMessage(area.Polygon is null
             ? "  Área de cobertura: rectángulo de los muros.\n"
             : $"  Área de cobertura: polilínea {area.Handle} ({grid.ValueCount} celdas con valor).\n");
+    }
+
+    private const string ResolutionKeyword = "Resolucion";
+    private const string CalculateKeyword = "Calcular";
+
+    /// <summary>Enter calcula con la resolución vigente; la opción Resolución la cambia para esta y las siguientes corridas.</summary>
+    private static bool AskResolution(Editor ed, SimulationSession session)
+    {
+        while (true)
+        {
+            var options = new PromptKeywordOptions(string.Create(Es, $"\nResolución actual {session.CellSizeM:0.00} m. Elegir opción")) { AllowNone = true };
+            options.Keywords.Add(ResolutionKeyword, ResolutionKeyword, "Resolución");
+            options.Keywords.Add(CalculateKeyword);
+            options.Keywords.Default = CalculateKeyword;
+            PromptResult answer = ed.GetKeywords(options);
+            if (answer.Status == PromptStatus.None || (answer.Status == PromptStatus.OK && answer.StringResult == CalculateKeyword)) return true;
+            if (answer.Status != PromptStatus.OK) return false;
+
+            var sizeOptions = new PromptDoubleOptions(string.Create(Es, $"\nTamaño de celda en metros ({SimulationSession.MinCellSizeM:0.00} a {SimulationSession.MaxCellSizeM:0})"))
+            {
+                DefaultValue = session.CellSizeM,
+                UseDefaultValue = true,
+                AllowNegative = false,
+                AllowZero = false,
+            };
+            PromptDoubleResult size = ed.GetDouble(sizeOptions);
+            if (size.Status != PromptStatus.OK) return false;
+
+            OperationResult<double> changed = session.SetResolution(size.Value);
+            if (changed.Succeeded) return true;
+            foreach (string error in changed.Errors) ed.WriteMessage($"\nWIFICALCULATE: {error}");
+        }
     }
 
     /// <summary>Junto al DWG (&lt;dwg&gt;_wifiheat.png) o, si el dibujo no está guardado, en la carpeta temporal.</summary>
