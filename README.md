@@ -17,6 +17,8 @@ dotnet test WifiHeat.slnx
 
 En AutoCAD, ejecutar `NETLOAD` y elegir `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows\WifiHeat.AutoCAD.dll`. Con `SECURELOAD` activo, agregar esa carpeta a las ubicaciones de confianza (`TRUSTEDPATHS`).
 
+Para usar además el panel, cargar con `NETLOAD` las dos DLL de `src\WifiHeat.AutoCAD.UI\bin\Debug\net10.0-windows` (esa carpeta también debe ser de confianza): primero `WifiHeat.AutoCAD.dll` y después `WifiHeat.AutoCAD.UI.dll`. El panel es opcional: sin `WifiHeat.AutoCAD.UI.dll` todos los comandos funcionan igual.
+
 ## Comandos
 
 | Comando | Descripción |
@@ -28,14 +30,31 @@ En AutoCAD, ejecutar `NETLOAD` y elegir `src\WifiHeat.AutoCAD\bin\Debug\net10.0-
 | `WIFIVALIDATE` | Lee los muros y lista errores y avisos con el handle de cada entidad (por ejemplo, `FALTA PROPIEDAD`). |
 | `WIFIADDAP` | Ubica el punto de acceso y pide banda (2,4 o 5 GHz) y potencia de transmisión. |
 | `WIFIAREA` | Opcional. Define el área de cobertura con una polilínea cerrada de tramos rectos; la opción `Rectángulo` vuelve al valor por defecto, el rectángulo que encierra los muros. Fuera del área no se calcula ni se pinta. |
-| `WIFICALCULATE` | Calcula la grilla y dibuja el mapa de calor y la leyenda. Opciones: `Resolución` (tamaño de celda, 0,50 m por defecto, entre 0,10 y 5 m) y `Atenuación` (0 a 90 %, 40 % por defecto); los valores se mantienen mientras el dibujo esté abierto. El mapa es una imagen PNG con degradé continuo, opaca dentro del área y transparente fuera (`<dibujo>_wifiheat_NNN.png`, un archivo nuevo por cálculo junto al DWG, o en la carpeta temporal si el dibujo no está guardado; se borran los anteriores). Se inserta en `WIFIHEAT_OVERLAY` debajo del resto del dibujo y se atenúa con la propiedad Atenuación (Fade) de la imagen. |
+| `WIFICALCULATE` | Calcula la grilla y dibuja el mapa de calor y la leyenda. Opciones: `Resolución` (tamaño de celda, 0,50 m por defecto, entre 0,10 y 5 m) y `Atenuación` (0 a 90 %, 40 % por defecto, que se aplica también al mapa ya dibujado); los valores se mantienen mientras el dibujo esté abierto. El mapa es una imagen PNG con degradé continuo, opaca dentro del área y transparente fuera (`<dibujo>_wifiheat_NNN.png`, un archivo nuevo por cálculo junto al DWG, o en la carpeta temporal si el dibujo no está guardado; se borran los anteriores). Se inserta en `WIFIHEAT_OVERLAY` debajo del resto del dibujo y se atenúa con la propiedad Atenuación (Fade) de la imagen. |
 | `WIFIQUERY` | Explica el RSSI estimado en un punto: distancia, muros cruzados, pérdidas y potencia recibida. |
 | `WIFIEXPORT` | Exporta a PNG la misma imagen del mapa de calor, con la misma atenuación, junto con los muros, el punto de acceso y la leyenda. |
+| `WIFIPANEL` | Abre el panel acoplable con todo el recorrido (ver [Panel](#panel)). Solo está disponible si se cargó `WifiHeat.AutoCAD.UI.dll`. |
 | `WIFIINFO` | Lista unidades, extensión, capas y entidades del espacio modelo. |
 
 Orden de uso: `WIFISETUP` → `WIFIEJES` (opcional) → `WIFIWALL` → `WIFIVALIDATE` → `WIFIADDAP` → `WIFIAREA` (opcional) → `WIFICALCULATE` → `WIFIQUERY` → `WIFIEXPORT`.
 
 Cada muro se dibuja como un eje (una línea o polilínea de tramos rectos por muro). El trayecto directo suma una vez la pérdida de cada eje que cruza; en uniones y cruces se cuenta una sola vez la pérdida mayor (ver [docs/modelo.md](docs/modelo.md)).
+
+## Panel
+
+`WIFIPANEL` abre una paleta acoplable que reúne el mismo recorrido que los comandos. El panel no calcula: muestra y edita los datos del dibujo activo y usa las mismas operaciones que los comandos, así que se pueden combinar. Sigue el tema claro u oscuro de AutoCAD y se actualiza al cambiar de dibujo y al terminar cada comando.
+
+| Sección | Qué permite |
+| --- | --- |
+| 1 · Preparar plano | Elegir la unidad del dibujo. Para muros de doble cara: elegir una ventana, ver las capas que contiene con su cantidad de segmentos y de ejes, marcar las que son caras de muro, ajustar el umbral de unión y generar los ejes. |
+| 2 · Plano y validación | Validar y ver la cantidad de muros, errores y avisos. Al elegir un problema se selecciona la entidad en el dibujo y se encuadra la vista. |
+| 3 · Estructuras (muros) | Tabla con handle, capa, longitud, material y espesor; el material y el espesor se editan en la fila. Filtros: todos, sin material y seleccionados. Seleccionar muros o líneas en el dibujo y asignarles material y espesor en bloque (las líneas pasan a `WIFIHEAT_MUROS`). Muestra la pérdida del material elegido en 2,4 y 5 GHz y marca los muros que atraviesa el trayecto hacia el último punto consultado. |
+| 4 · Punto de acceso | Posición X/Y (escrita o con un clic en el dibujo), banda con su frecuencia, potencia de transmisión, ganancias de antena, pérdidas de cable y resolución de la grilla. Cada cambio deja el mapa marcado como desactualizado. |
+| 5 · Calcular y mostrar | Área de cobertura (polilínea o rectángulo de los muros), cálculo con resumen (celdas, RSSI mínimo y máximo, tiempo), atenuación del mapa sin recalcular y leyenda de colores. |
+| 6 · Consultar punto | Cada clic en el dibujo muestra distancia, L_0, muros cruzados con su material y su pérdida, P_RX y clase, con el texto completo de la explicación. Termina con Esc o Enter. |
+| 7 · Exportar PNG | Guarda la imagen del último cálculo y muestra la ruta del archivo. |
+
+Los valores se confirman con Enter o al salir del campo. Si AutoCAD está ejecutando otro comando, el panel lo avisa y no modifica el dibujo hasta que termine.
 
 ## Probar con el ejemplo
 
@@ -54,8 +73,10 @@ Notas:
 ## Estructura
 
 - `src/WifiHeat.Core`: modelo de propagación, geometría, materiales y grilla; no depende de AutoCAD.
-- `src/WifiHeat.AutoCAD`: comandos, lectura del dibujo y salida en AutoCAD.
+- `src/WifiHeat.AutoCAD`: comandos, lectura del dibujo y salida en AutoCAD. No usa la interfaz de AutoCAD, así que también se carga en `accoreconsole`.
+- `src/WifiHeat.AutoCAD.UI`: panel WPF (`WIFIPANEL`). Los modelos de vista no dependen de AutoCAD; solo la carpeta `Host` usa la paleta y el editor.
 - `tests/WifiHeat.Core.Tests`: pruebas de Core con xUnit.
+- `tests/WifiHeat.AutoCAD.UI.Tests`: pruebas de los modelos de vista del panel con un dibujo en memoria.
 
 Modelo y ecuaciones: [docs/modelo.md](docs/modelo.md). Materiales y fuentes: [config/materials.json](config/materials.json).
 

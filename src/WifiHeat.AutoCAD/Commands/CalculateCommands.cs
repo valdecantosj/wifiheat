@@ -39,7 +39,8 @@ public sealed class CalculateCommands
     });
 
     /// <summary>
-    /// Enter calcula con los valores vigentes. Resolución y Atenuación cambian la configuración de la sesión y vuelven a preguntar.
+    /// Enter calcula con los valores vigentes. Resolución y Atenuación cambian la configuración de la sesión y vuelven a preguntar;
+    /// Atenuación se aplica además al mapa ya dibujado.
     /// Devuelve false si el usuario cancela.
     /// </summary>
     private static bool AskOptions(Editor ed, IWifiHeatService service)
@@ -81,7 +82,9 @@ public sealed class CalculateCommands
                     AllowNegative = false,
                 });
                 if (fade.Status != PromptStatus.OK) return false;
-                changed = current with { OverlayFadePercent = fade.Value };
+                OperationResult<int> faded = service.SetOverlayFade(fade.Value);
+                CommandOutput.Problems(ed, "WIFICALCULATE", faded.Errors, faded.Warnings);
+                continue;
             }
 
             OperationResult<SimulationSettings> configured = service.Configure(changed);
