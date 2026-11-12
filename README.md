@@ -64,6 +64,12 @@ Los valores se confirman con Enter o al salir del campo. Si AutoCAD está ejecut
 2. Ejecutar `NETLOAD` y elegir `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows\WifiHeat.AutoCAD.dll` (compilar antes con `dotnet build WifiHeat.slnx`).
 3. Ejecutar `SCRIPT` y elegir `samples/demo.scr`. Valida los muros, calcula el mapa, consulta dos puntos —(8; 5) m, en el mismo ambiente que el AP, y (26; 11) m, detrás de tres muros— y exporta `samples/demo-wifiheat.png`. La imagen del mapa que se inserta en el dibujo queda en `samples/demo_wifiheat_NNN.png`.
 
+Para trabajar desde el panel en lugar de los comandos:
+
+1. Con el ejemplo abierto, agregar `src\WifiHeat.AutoCAD.UI\bin\Debug\net10.0-windows` a `TRUSTEDPATHS` y ejecutar `NETLOAD` con `WifiHeat.AutoCAD.dll` y después con `WifiHeat.AutoCAD.UI.dll`, ambos de esa carpeta.
+2. Ejecutar `WIFIPANEL`: se abre la paleta acoplable con siete secciones, de "Preparar plano" a "Exportar PNG".
+3. En "Calcular y mostrar", pulsar "Calcular"; en "Consultar punto", pulsar "Consultar punto…" y hacer clic en el plano para ver la señal en cada punto (Esc termina).
+
 Notas:
 
 - Con `SECURELOAD` activo, `NETLOAD` exige que la carpeta del plugin esté en `TRUSTEDPATHS`: agregar `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows`. Si AutoCAD bloquea también el script, agregar la carpeta `samples`.
