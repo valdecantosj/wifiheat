@@ -102,4 +102,19 @@ public class CoverageAreaTests
 
         Assert.Null(session.LastGrid);
     }
+
+    [Fact]
+    public void Heatmap_is_shared_until_the_next_calculation()
+    {
+        SimulationSession session = Session(Box(10, 8), new Vec2(2, 2));
+        Assert.Null(session.Heatmap());
+
+        session.Calculate();
+        HeatmapImage first = session.Heatmap()!;
+
+        Assert.Same(first, session.Heatmap());
+        Assert.Equal(new Vec2(0, 0), first.Origin);
+        session.Calculate();
+        Assert.NotSame(first, session.Heatmap());
+    }
 }

@@ -1,58 +1,87 @@
-using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.Geometry;
+using WifiHeat.AutoCAD.Export;
 using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Simulation;
-using Color = Autodesk.AutoCAD.Colors.Color;
 
 namespace WifiHeat.AutoCAD.Rendering;
 
+public sealed record OverlayResult(int Entities, string ImagePath);
+
 public interface IOverlayRenderer
 {
-    /// <summary>Reemplaza el mapa de calor del dibujo. Devuelve la cantidad de entidades creadas.</summary>
-    int Render(Database db, Transaction tr, DrawingUnit unit, RssiGrid grid);
+    /// <summary>Reemplaza el mapa de calor del dibujo.</summary>
+    OverlayResult Render(Database db, Transaction tr, DrawingUnit unit, HeatmapImage image, string imagePath);
 }
 
-/// <summary>Mapa de calor con un sólido 2D por tramo horizontal del mismo color.</summary>
-public sealed class SolidRunOverlayRenderer : IOverlayRenderer
+/// <summary>
+/// Mapa de calor como imagen ráster: un PNG con alfa referenciado desde el dibujo,
+/// en la capa del overlay y al fondo del orden de dibujo.
+/// </summary>
+public sealed class RasterOverlayRenderer : IOverlayRenderer
 {
-    public const byte Alpha = 150;
+    public const string ImageDefinitionKey = "WIFIHEAT_OVERLAY";
 
-    public int Render(Database db, Transaction tr, DrawingUnit unit, RssiGrid grid)
+    public OverlayResult Render(Database db, Transaction tr, DrawingUnit unit, HeatmapImage image, string imagePath)
     {
         ModelSpace.EraseLayer(db, tr, WifiHeatNames.OverlayLayer);
+        ObjectId dictionaryId = RasterImageDef.GetImageDictionary(db);
+        if (dictionaryId.IsNull) dictionaryId = RasterImageDef.CreateImageDictionary(db);
+        var dictionary = (DBDictionary)tr.GetObject(dictionaryId, OpenMode.ForWrite);
+        RemoveDefinition(tr, dictionary);
+
+        string path = WriteImage(image, imagePath);
+
+        var definition = new RasterImageDef { SourceFileName = path };
+        definition.Load();
+        ObjectId definitionId = dictionary.SetAt(ImageDefinitionKey, definition);
+        tr.AddNewlyCreatedDBObject(definition, true);
+
         BlockTableRecord modelSpace = ModelSpace.Open(db, tr, OpenMode.ForWrite);
-
-        GridSpec spec = grid.Spec;
-        Color[] colors = [.. SignalScale.Levels.Select(l => Color.FromRgb(l.R, l.G, l.B))];
-        var transparency = new Transparency(Alpha);
-        var ids = new ObjectIdCollection();
-
-        foreach (ColorRun run in ColorRuns.FromGrid(grid))
+        var raster = new RasterImage
         {
-            double x0 = spec.Origin.X + run.StartColumn * spec.CellSizeM;
-            double x1 = x0 + run.Length * spec.CellSizeM;
-            double y0 = spec.Origin.Y + run.Row * spec.CellSizeM;
-            double y1 = y0 + spec.CellSizeM;
+            ImageDefId = definitionId,
+            Layer = WifiHeatNames.OverlayLayer,
+            ShowImage = true,
+            ImageTransparency = true,
+        };
+        raster.Orientation = new CoordinateSystem3d(
+            ModelSpace.ToDrawing(unit, image.Origin),
+            new Vector3d(DrawingUnits.FromMetres(unit, image.WidthM), 0, 0),
+            new Vector3d(0, DrawingUnits.FromMetres(unit, image.HeightM), 0));
+        ObjectId rasterId = ModelSpace.Add(modelSpace, tr, raster);
+        RasterImage.EnableReactors(true);
+        raster.AssociateRasterDef(definition);
 
-            var solid = new Solid(
-                ModelSpace.ToDrawing(unit, x0, y0),
-                ModelSpace.ToDrawing(unit, x1, y0),
-                ModelSpace.ToDrawing(unit, x0, y1),
-                ModelSpace.ToDrawing(unit, x1, y1))
-            {
-                Layer = WifiHeatNames.OverlayLayer,
-                Color = colors[run.LevelIndex],
-                Transparency = transparency,
-            };
-            ids.Add(ModelSpace.Add(modelSpace, tr, solid));
-        }
+        var drawOrder = (DrawOrderTable)tr.GetObject(modelSpace.DrawOrderTableId, OpenMode.ForWrite);
+        drawOrder.MoveToBottom(new ObjectIdCollection { rasterId });
+        return new OverlayResult(1, path);
+    }
 
-        if (ids.Count > 0)
+    private static void RemoveDefinition(Transaction tr, DBDictionary dictionary)
+    {
+        if (!dictionary.Contains(ImageDefinitionKey)) return;
+
+        var old = (RasterImageDef)tr.GetObject(dictionary.GetAt(ImageDefinitionKey), OpenMode.ForWrite);
+        if (old.IsLoaded) old.Unload(true);
+        dictionary.Remove(ImageDefinitionKey);
+        old.Erase();
+    }
+
+    /// <summary>Si el archivo está bloqueado (por ejemplo, abierto en otro programa), se escribe con otro nombre.</summary>
+    private static string WriteImage(HeatmapImage image, string path)
+    {
+        try
         {
-            var drawOrder = (DrawOrderTable)tr.GetObject(modelSpace.DrawOrderTableId, OpenMode.ForWrite);
-            drawOrder.MoveToBottom(ids);
+            HeatmapBitmap.Save(image, path);
+            return path;
         }
-
-        return ids.Count;
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.ExternalException)
+        {
+            string alternative = Path.Combine(Path.GetDirectoryName(path)!,
+                $"{Path.GetFileNameWithoutExtension(path)}-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+            HeatmapBitmap.Save(image, alternative);
+            return alternative;
+        }
     }
 }

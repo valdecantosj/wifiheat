@@ -16,7 +16,7 @@ namespace WifiHeat.AutoCAD.Commands;
 public sealed class CalculateCommands
 {
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-AR");
-    private static readonly IOverlayRenderer Overlay = new SolidRunOverlayRenderer();
+    private static readonly IOverlayRenderer Overlay = new RasterOverlayRenderer();
 
     /// <summary>Valida, calcula la grilla y dibuja el mapa de calor y la leyenda.</summary>
     [CommandMethod("WIFICALCULATE")]
@@ -51,21 +51,44 @@ public sealed class CalculateCommands
         }
 
         RssiGrid grid = result.Value!;
-        int entities;
+        var imageWatch = Stopwatch.StartNew();
+        HeatmapImage image = session.Heatmap()!;
+        (string imagePath, bool saved) = OverlayImagePath(doc);
+        OverlayResult overlay;
         using (Transaction tr = db.TransactionManager.StartTransaction())
         {
             DrawingStore.EnsureAll(db, tr);
-            entities = Overlay.Render(db, tr, unit, grid);
+            overlay = Overlay.Render(db, tr, unit, image, imagePath);
             LegendRenderer.Render(db, tr, unit, grid.Spec, Legend.For(session.Settings));
             tr.Commit();
         }
 
+        imageWatch.Stop();
+
         foreach (string warning in result.Warnings) ed.WriteMessage($"\n  [AVISO] {warning}");
+        if (!saved) ed.WriteMessage("\n  [AVISO] El dibujo no está guardado: la imagen del mapa se guardó en la carpeta temporal. Guardar el dibujo y volver a calcular para dejarla junto al DWG.");
+        if (overlay.ImagePath != imagePath) ed.WriteMessage($"\n  [AVISO] {imagePath} estaba en uso; la imagen se guardó con otro nombre.");
+
         GridSpec spec = grid.Spec;
         ed.WriteMessage(string.Create(Es,
-            $"\nWIFICALCULATE: {spec.CellCount} celdas ({spec.Columns} × {spec.Rows}, {spec.CellSizeM:0.##} m) · RSSI mín {grid.Min:0.0} dBm · máx {grid.Max:0.0} dBm · cálculo {watch.Elapsed.TotalMilliseconds:0} ms · {entities} entidades de overlay.\n"));
+            $"\nWIFICALCULATE: {spec.CellCount} celdas ({spec.Columns} × {spec.Rows}, {spec.CellSizeM:0.##} m) · RSSI mín {grid.Min:0.0} dBm · máx {grid.Max:0.0} dBm · cálculo {watch.Elapsed.TotalMilliseconds:0} ms · {overlay.Entities} entidad(es) de overlay.\n"));
+        ed.WriteMessage(string.Create(Es,
+            $"  Imagen: {image.Width} × {image.Height} px de {image.PixelSizeM * 100:0.##} cm · {imageWatch.Elapsed.TotalMilliseconds:0} ms · {overlay.ImagePath}\n"));
         ed.WriteMessage(area.Polygon is null
             ? "  Área de cobertura: rectángulo de los muros.\n"
             : $"  Área de cobertura: polilínea {area.Handle} ({grid.ValueCount} celdas con valor).\n");
+    }
+
+    /// <summary>Junto al DWG (&lt;dwg&gt;_wifiheat.png) o, si el dibujo no está guardado, en la carpeta temporal.</summary>
+    private static (string Path, bool NextToDrawing) OverlayImagePath(Document doc)
+    {
+        bool saved = Convert.ToInt32(CoreApp.GetSystemVariable("DWGTITLED")) != 0;
+        if (saved)
+        {
+            string dwg = doc.Database.Filename;
+            return (Path.Combine(Path.GetDirectoryName(dwg)!, Path.GetFileNameWithoutExtension(dwg) + "_wifiheat.png"), true);
+        }
+
+        return (Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(doc.Name) + "_wifiheat.png"), false);
     }
 }

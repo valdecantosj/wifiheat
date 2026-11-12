@@ -27,9 +27,9 @@ En AutoCAD, ejecutar `NETLOAD` y elegir `src\WifiHeat.AutoCAD\bin\Debug\net10.0-
 | `WIFIVALIDATE` | Lee los muros y lista errores y avisos con el handle de cada entidad (por ejemplo, `FALTA PROPIEDAD`). |
 | `WIFIADDAP` | Ubica el punto de acceso y pide banda (2,4 o 5 GHz) y potencia de transmisión. |
 | `WIFIAREA` | Opcional. Define el área de cobertura con una polilínea cerrada de tramos rectos; la opción `Rectangulo` vuelve al valor por defecto, el rectángulo que encierra los muros. Fuera del área no se calcula ni se pinta. |
-| `WIFICALCULATE` | Calcula la grilla de 0,50 m y dibuja el mapa de calor y la leyenda. |
+| `WIFICALCULATE` | Calcula la grilla de 0,50 m, genera el mapa de calor como imagen PNG con degradé continuo (`<dibujo>_wifiheat.png`, junto al DWG; en la carpeta temporal si el dibujo no está guardado), la inserta en `WIFIHEAT_OVERLAY` debajo del resto del dibujo y agrega la leyenda. |
 | `WIFIQUERY` | Explica el RSSI estimado en un punto: distancia, muros cruzados, pérdidas y potencia recibida. |
-| `WIFIEXPORT` | Exporta a PNG el mapa de calor con los muros, el punto de acceso y la leyenda. |
+| `WIFIEXPORT` | Exporta a PNG la misma imagen del mapa de calor con los muros, el punto de acceso y la leyenda. |
 | `WIFIINFO` | Lista unidades, extensión, capas y entidades del espacio modelo. |
 
 Orden de uso: `WIFISETUP` → `WIFIWALL` → `WIFIVALIDATE` → `WIFIADDAP` → `WIFIAREA` (opcional) → `WIFICALCULATE` → `WIFIQUERY` → `WIFIEXPORT`.

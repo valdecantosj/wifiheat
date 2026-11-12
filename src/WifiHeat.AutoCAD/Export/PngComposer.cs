@@ -15,14 +15,18 @@ public static class PngComposer
     private const int MaxMapHeightPx = 1000;
     private const int MarginPx = 40;
     private const int LegendWidthPx = 330;
-    private const int HeatAlpha = 185;
 
-    public static void Save(string path, IReadOnlyList<Wall> walls, RssiGrid grid, AccessPoint ap, Legend legend)
+    /// <param name="heatmap">La misma imagen que se inserta en el dibujo.</param>
+    public static void Save(string path, IReadOnlyList<Wall> walls, HeatmapImage heatmap, AccessPoint ap, Legend legend)
     {
-        GridSpec spec = grid.Spec;
-        double scale = Math.Min(MaxMapWidthPx / spec.WidthM, MaxMapHeightPx / spec.HeightM);
-        int mapWidth = Math.Max(1, (int)Math.Ceiling(spec.WidthM * scale));
-        int mapHeight = Math.Max(1, (int)Math.Ceiling(spec.HeightM * scale));
+        var heatExtent = new BoundingBox(heatmap.Origin, new Vec2(heatmap.Origin.X + heatmap.WidthM, heatmap.Origin.Y + heatmap.HeightM));
+        BoundingBox extent = BoundingBox.FromPoints(
+            walls.SelectMany(w => w.Segments).SelectMany(s => new[] { s.A, s.B })
+                .Concat([heatExtent.Min, heatExtent.Max, ap.Position]));
+        double widthM = Math.Max(extent.Width, 1e-3), heightM = Math.Max(extent.Height, 1e-3);
+        double scale = Math.Min(MaxMapWidthPx / widthM, MaxMapHeightPx / heightM);
+        int mapWidth = Math.Max(1, (int)Math.Ceiling(widthM * scale));
+        int mapHeight = Math.Max(1, (int)Math.Ceiling(heightM * scale));
         int legendHeight = 60 + legend.RowCount * 34 + 50;
         int width = MarginPx + mapWidth + MarginPx + LegendWidthPx;
         int height = Math.Max(mapHeight, legendHeight) + 2 * MarginPx;
@@ -31,20 +35,20 @@ public static class PngComposer
         using Graphics g = Graphics.FromImage(bitmap);
         g.Clear(Color.White);
 
-        float X(double xM) => (float)(MarginPx + (xM - spec.Origin.X) * scale);
-        float Y(double yM) => (float)(MarginPx + mapHeight - (yM - spec.Origin.Y) * scale);
+        float X(double xM) => (float)(MarginPx + (xM - extent.Min.X) * scale);
+        float Y(double yM) => (float)(MarginPx + mapHeight - (yM - extent.Min.Y) * scale);
 
-        SolidBrush[] brushes = [.. SignalScale.Levels.Select(l => new SolidBrush(Color.FromArgb(HeatAlpha, l.R, l.G, l.B)))];
-        foreach (ColorRun run in ColorRuns.FromGrid(grid))
+        using (Bitmap heat = HeatmapBitmap.ToBitmap(heatmap))
+        using (var attributes = new ImageAttributes())
         {
-            double x0 = spec.Origin.X + run.StartColumn * spec.CellSizeM;
-            double y1 = spec.Origin.Y + (run.Row + 1) * spec.CellSizeM;
-            float left = X(x0), top = Y(y1);
-            float right = X(x0 + run.Length * spec.CellSizeM), bottom = Y(y1 - spec.CellSizeM);
-            g.FillRectangle(brushes[run.LevelIndex], left, top, right - left, bottom - top);
+            attributes.SetWrapMode(WrapMode.TileFlipXY);
+            g.InterpolationMode = InterpolationMode.HighQualityBilinear;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            float left = X(heatExtent.Min.X), top = Y(heatExtent.Max.Y);
+            var target = Rectangle.Round(new RectangleF(left, top, X(heatExtent.Max.X) - left, Y(heatExtent.Min.Y) - top));
+            g.DrawImage(heat, target, 0, 0, heat.Width, heat.Height, GraphicsUnit.Pixel, attributes);
+            g.PixelOffsetMode = PixelOffsetMode.Default;
         }
-
-        foreach (SolidBrush brush in brushes) brush.Dispose();
 
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.AntiAlias;
@@ -84,7 +88,7 @@ public static class PngComposer
         ly += 12;
         foreach (SignalLevel level in legend.Levels)
         {
-            using var swatch = new SolidBrush(Color.FromArgb(HeatAlpha, level.R, level.G, level.B));
+            using var swatch = new SolidBrush(Color.FromArgb(HeatmapRasterizer.DefaultAlpha, level.R, level.G, level.B));
             g.FillRectangle(swatch, lx, ly, 40, 24);
             g.DrawRectangle(Pens.Gray, lx, ly, 40, 24);
             g.DrawString(level.Label, textFont, Brushes.Black, lx + 52, ly + 2);

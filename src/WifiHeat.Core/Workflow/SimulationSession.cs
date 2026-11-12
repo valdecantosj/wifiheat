@@ -27,12 +27,25 @@ public sealed class SimulationSession(MaterialCatalog catalog)
 
     public AccessPoint? AccessPoint { get; private set; }
 
-    public RssiGrid? LastGrid { get; private set; }
+    public RssiGrid? LastGrid
+    {
+        get => _lastGrid;
+        private set
+        {
+            _lastGrid = value;
+            _heatmap = null;
+        }
+    }
+
+    /// <summary>Imagen continua del último cálculo; la comparten el mapa del dibujo y la exportación.</summary>
+    public HeatmapImage? Heatmap() => _lastGrid is null ? null : _heatmap ??= HeatmapRasterizer.Render(_lastGrid);
 
     /// <summary>Área de cobertura definida por el usuario. Si es null se usa el rectángulo de los muros.</summary>
     public Polygon2? CoverageArea { get; private set; }
 
     private SimulationScene? _scene;
+    private RssiGrid? _lastGrid;
+    private HeatmapImage? _heatmap;
 
     /// <summary>Carga los muros leídos del plano y los valida. Invalida el último cálculo.</summary>
     public ValidationReport LoadWalls(IReadOnlyList<Wall> walls, IEnumerable<ValidationIssue>? hostIssues = null)

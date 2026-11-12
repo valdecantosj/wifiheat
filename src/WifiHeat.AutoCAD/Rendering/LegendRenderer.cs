@@ -32,7 +32,7 @@ public static class LegendRenderer
             {
                 Layer = WifiHeatNames.LegendLayer,
                 Color = Color.FromRgb(level.R, level.G, level.B),
-                Transparency = new Autodesk.AutoCAD.Colors.Transparency(SolidRunOverlayRenderer.Alpha),
+                Transparency = new Autodesk.AutoCAD.Colors.Transparency(HeatmapRasterizer.DefaultAlpha),
             };
             ModelSpace.Add(modelSpace, tr, swatch);
             AddText(level.Label, 0.45, 1.6 * row);
