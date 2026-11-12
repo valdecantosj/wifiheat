@@ -5,19 +5,31 @@ namespace WifiHeat.AutoCAD.Reading;
 
 /// <summary>
 /// XData de la aplicación WIFIHEAT.
-/// Muro: (1000 "WALL") (1000 material) (1040 espesor en metros).
+/// Muro: (1000 "WALL") (1000 material) (1040 espesor en metros) y, si es un eje generado, (1070 1).
 /// AP: (1000 "AP") (1000 nombre) (1070 banda) (1040 potencia TX en dBm).
 /// </summary>
 public static class WifiXData
 {
-    public static void WriteWall(Entity entity, string materialId, double thicknessM)
+    private const short GeneratedAxisMark = 1;
+
+    /// <summary>Con generatedAxis null se conserva la marca que ya tenga la entidad.</summary>
+    public static void WriteWall(Entity entity, string materialId, double thicknessM, bool? generatedAxis = null)
     {
+        bool generated = generatedAxis ?? IsGeneratedAxis(entity);
         using var data = new ResultBuffer(
             new TypedValue((int)DxfCode.ExtendedDataRegAppName, WifiHeatNames.AppName),
             new TypedValue((int)DxfCode.ExtendedDataAsciiString, WifiHeatNames.WallTag),
             new TypedValue((int)DxfCode.ExtendedDataAsciiString, materialId),
             new TypedValue((int)DxfCode.ExtendedDataReal, thicknessM));
+        if (generated) data.Add(new TypedValue((int)DxfCode.ExtendedDataInteger16, GeneratedAxisMark));
         entity.XData = data;
+    }
+
+    /// <summary>True si el muro es un eje creado por la generación automática.</summary>
+    public static bool IsGeneratedAxis(Entity entity)
+    {
+        TypedValue[] values = Read(entity);
+        return values.Length > 4 && values[1].Value as string == WifiHeatNames.WallTag && values[4].Value is short mark && mark == GeneratedAxisMark;
     }
 
     public static (string? MaterialId, double? ThicknessM) ReadWall(Entity entity)

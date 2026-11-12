@@ -10,59 +10,6 @@ namespace WifiHeat.Core.Tests.Service;
 
 public class WifiHeatServiceTests
 {
-    private static readonly MaterialCatalog Catalog = new([new Material("brick", "Ladrillo", 8, 12), new Material("gypsum", "Yeso", 3, 4)]);
-
-    private sealed class FakeDrawing : WifiHeatService
-    {
-        public FakeDrawing() : base(new SimulationSession(Catalog)) { }
-
-        public Dictionary<string, Wall> Walls { get; } = new(StringComparer.OrdinalIgnoreCase);
-        public List<ValidationIssue> HostIssues { get; } = [];
-        public Polygon2? Area { get; set; }
-        public List<(AccessPoint Ap, RadioSettings Settings)> SavedAccessPoints { get; } = [];
-        public int Draws { get; private set; }
-        public List<string> Exported { get; } = [];
-        public Exception? ExportFailure { get; set; }
-
-        public void Add(string handle, double ax, double ay, double bx, double by, string? material = null, double? thickness = null) =>
-            Walls[handle] = new Wall(handle, [new Segment2(new Vec2(ax, ay), new Vec2(bx, by))], material, thickness);
-
-        protected override DrawingContents ReadDrawing() =>
-            new([.. Walls.Values.Select(w => new DrawingWall(w, "WIFIHEAT_MUROS"))], HostIssues);
-
-        protected override CoverageAreaRead ReadCoverageArea() => new(Area, Area is null ? "rectángulo" : "polilínea", null);
-
-        protected override IReadOnlyList<string> WriteWalls(IReadOnlyList<WallAssignment> assignments)
-        {
-            var missing = new List<string>();
-            foreach (WallAssignment a in assignments)
-            {
-                if (Walls.TryGetValue(a.Handle, out Wall? w)) Walls[a.Handle] = w with { MaterialId = a.MaterialId, ThicknessM = a.ThicknessM };
-                else missing.Add(a.Handle);
-            }
-
-            return missing;
-        }
-
-        protected override string? SaveAccessPoint(AccessPoint ap, RadioSettings settings)
-        {
-            SavedAccessPoints.Add((ap, settings));
-            return null;
-        }
-
-        protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent)
-        {
-            Draws++;
-            return new OverlayOutcome($"overlay_{Draws:000}.png", []);
-        }
-
-        protected override void WritePng(string path, IReadOnlyList<Wall> walls, HeatmapImage image, AccessPoint ap, Legend legend, int fadePercent)
-        {
-            if (ExportFailure is not null) throw ExportFailure;
-            Exported.Add(path);
-        }
-    }
-
     private static FakeDrawing Room(string? material = "brick")
     {
         var d = new FakeDrawing();

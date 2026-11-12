@@ -1,0 +1,139 @@
+using WifiHeat.Core.Geometry;
+using WifiHeat.Core.Materials;
+using WifiHeat.Core.Propagation;
+using WifiHeat.Core.Service;
+using WifiHeat.Core.Simulation;
+using WifiHeat.Core.Walls;
+using WifiHeat.Core.Workflow;
+
+namespace WifiHeat.Core.Tests.Service;
+
+internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatService(new SimulationSession(catalog ?? DefaultCatalog))
+{
+    public const string WallLayer = "WIFIHEAT_MUROS";
+
+    private int _nextHandle = 1;
+
+    public static MaterialCatalog DefaultCatalog { get; } = new([new Material("brick", "Ladrillo", 8, 12), new Material("gypsum", "Yeso", 3, 4)]);
+
+    public DrawingUnit? Unit { get; set; } = DrawingUnit.Metres;
+    public Dictionary<string, Wall> Walls { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> GeneratedHandles { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, List<FaceSegment>> Faces { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, Polygon2> Polylines { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<ValidationIssue> HostIssues { get; } = [];
+    public Polygon2? Area { get; set; }
+    public string? AreaHandle { get; private set; }
+    public List<(AccessPoint Ap, RadioSettings Settings)> SavedAccessPoints { get; } = [];
+    public int Draws { get; private set; }
+    public List<int> FadesApplied { get; } = [];
+    public int LegendRedraws { get; private set; }
+    public List<string> Exported { get; } = [];
+    public Exception? ExportFailure { get; set; }
+    public string ExportPath { get; set; } = "C:/planos/casa-wifiheat.png";
+
+    public override string SuggestedExportPath => ExportPath;
+
+    public void Add(string handle, double ax, double ay, double bx, double by, string? material = null, double? thickness = null) =>
+        Walls[handle] = new Wall(handle, [new Segment2(new Vec2(ax, ay), new Vec2(bx, by))], material, thickness);
+
+    public void AddFace(string layer, string id, double ax, double ay, double bx, double by)
+    {
+        if (!Faces.TryGetValue(layer, out List<FaceSegment>? list)) Faces[layer] = list = [];
+        list.Add(new FaceSegment(id, new Segment2(new Vec2(ax, ay), new Vec2(bx, by))));
+    }
+
+    protected override DrawingSetup ReadSetup() => new(Unit, DrawingUnit.Millimetres, "INSUNITS=Millimeters");
+
+    protected override void WriteUnit(DrawingUnit unit) => Unit = unit;
+
+    protected override DrawingContents ReadDrawing()
+    {
+        List<ValidationIssue> issues = [.. HostIssues];
+        if (Unit is null) issues.Add(DrawingIssues.MissingUnit());
+        return new DrawingContents([.. Walls.Values.Select(w => new DrawingWall(w, WallLayer))], issues);
+    }
+
+    protected override CoverageAreaRead ReadCoverageArea() =>
+        new(Area, Area is null ? "rectángulo de los muros" : $"polilínea {AreaHandle ?? "?"}", null, Area is null ? null : AreaHandle);
+
+    protected override OperationResult<CoverageAreaRead> WriteCoverageArea(string? polylineHandle)
+    {
+        if (polylineHandle is null)
+        {
+            Area = null;
+            AreaHandle = null;
+            return OperationResult<CoverageAreaRead>.Ok(ReadCoverageArea());
+        }
+
+        if (!Polylines.TryGetValue(polylineHandle, out Polygon2? polygon))
+        {
+            return OperationResult<CoverageAreaRead>.Fail($"La entidad {polylineHandle} no es una polilínea. No se cambió el área.");
+        }
+
+        Area = polygon;
+        AreaHandle = polylineHandle;
+        return OperationResult<CoverageAreaRead>.Ok(ReadCoverageArea());
+    }
+
+    protected override IReadOnlyList<LayerFaces> ReadFaces(BoundingBox windowM) =>
+        [.. Faces.Select(kv => new LayerFaces(kv.Key, WallAxisDetector.InsideWindow(kv.Value, windowM))).Where(l => l.Faces.Count > 0)];
+
+    protected override IReadOnlyList<GeneratedAxis> ReadGeneratedAxes(BoundingBox windowM) =>
+        [.. Walls.Values
+            .Where(w => GeneratedHandles.Contains(w.Id) && WallAxisDetector.InsideWindow([new FaceSegment(w.Id, w.Segments[0])], windowM).Count == 1)
+            .Select(w => new GeneratedAxis(w.Id, w.Segments[0]))];
+
+    protected override void ReplaceAxes(IReadOnlyList<string> eraseHandles, IReadOnlyList<NewAxis> create)
+    {
+        foreach (string handle in eraseHandles)
+        {
+            Walls.Remove(handle);
+            GeneratedHandles.Remove(handle);
+        }
+
+        foreach (NewAxis axis in create)
+        {
+            string handle = $"G{_nextHandle++}";
+            Walls[handle] = new Wall(handle, [axis.Axis], null, axis.ThicknessM);
+            GeneratedHandles.Add(handle);
+        }
+    }
+
+    protected override IReadOnlyList<string> WriteWalls(IReadOnlyList<WallAssignment> assignments)
+    {
+        var missing = new List<string>();
+        foreach (WallAssignment a in assignments)
+        {
+            if (Walls.TryGetValue(a.Handle, out Wall? w)) Walls[a.Handle] = w with { MaterialId = a.MaterialId, ThicknessM = a.ThicknessM };
+            else missing.Add(a.Handle);
+        }
+
+        return missing;
+    }
+
+    protected override string? SaveAccessPoint(AccessPoint ap, RadioSettings settings)
+    {
+        SavedAccessPoints.Add((ap, settings));
+        return null;
+    }
+
+    protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent)
+    {
+        Draws++;
+        return new OverlayOutcome($"overlay_{Draws:000}.png", []);
+    }
+
+    protected override string? ApplyOverlayFade(int percent, RssiGrid? grid, Legend legend)
+    {
+        FadesApplied.Add(percent);
+        if (grid is not null) LegendRedraws++;
+        return null;
+    }
+
+    protected override void WritePng(string path, IReadOnlyList<Wall> walls, HeatmapImage image, AccessPoint ap, Legend legend, int fadePercent)
+    {
+        if (ExportFailure is not null) throw ExportFailure;
+        Exported.Add(path);
+    }
+}

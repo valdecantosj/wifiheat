@@ -1,14 +1,11 @@
 using System.Globalization;
-using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
-using WifiHeat.AutoCAD.Reading;
-using WifiHeat.AutoCAD.Rendering;
 using WifiHeat.Core.Geometry;
+using WifiHeat.Core.Service;
 using WifiHeat.Core.Walls;
-using CoreApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
+using WifiHeat.Core.Workflow;
 
 namespace WifiHeat.AutoCAD.Commands;
 
@@ -19,12 +16,12 @@ public sealed class AxisCommands
 
     /// <summary>
     /// Propone ejes para muros dibujados con sus dos caras, dentro de una ventana.
-    /// Crea líneas nuevas en la capa de muros con el espesor estimado y sin material; no modifica las caras.
+    /// Crea líneas en la capa de muros con el espesor estimado y sin material; no modifica las caras.
+    /// Al repetirlo sobre la misma ventana reemplaza los ejes generados antes.
     /// </summary>
     [CommandMethod("WIFIEJES")]
     public void CreateAxes() => CommandGuard.Run("WIFIEJES", doc =>
     {
-        Database db = doc.Database;
         Editor ed = doc.Editor;
         if (!DrawingContext.TryGetUnit(doc, "WIFIEJES", out DrawingUnit unit)) return;
 
@@ -39,57 +36,55 @@ public sealed class AxisCommands
             DrawingUnits.ToMetres(unit, Math.Min(a.X, b.X), Math.Min(a.Y, b.Y)),
             DrawingUnits.ToMetres(unit, Math.Max(a.X, b.X), Math.Max(a.Y, b.Y)));
 
-        Dictionary<string, List<FaceSegment>> byLayer = ReadFaces(db, unit, window);
-        if (byLayer.Count == 0)
+        AutoCadWifiHeatService service = Sessions.Service(doc);
+        OperationResult<AxisSurvey> surveyed = service.SurveyAxisLayers(window);
+        CommandOutput.Problems(ed, "WIFIEJES", surveyed.Errors, surveyed.Warnings);
+        if (!surveyed.Succeeded) return;
+
+        AxisSurvey survey = surveyed.Value!;
+        if (survey.Layers.Any(l => !l.ExplicitOnly))
         {
-            ed.WriteMessage("\nWIFIEJES: no hay líneas ni polilíneas enteras dentro de la ventana.\n");
-            return;
+            ed.WriteMessage($"\nDentro de la ventana, por capa: {Describe(survey.Layers.Where(l => !l.ExplicitOnly))}.");
         }
 
-        var axesByLayer = byLayer.ToDictionary(kv => kv.Key, kv => WallAxisDetector.Detect(kv.Value).Axes.Count, StringComparer.OrdinalIgnoreCase);
-        List<string> ranked = [.. byLayer.Keys
-            .OrderByDescending(k => axesByLayer[k] > 0 && (k.Contains("muro", StringComparison.OrdinalIgnoreCase) || k.Contains("wall", StringComparison.OrdinalIgnoreCase)))
-            .ThenByDescending(k => axesByLayer[k])
-            .ThenByDescending(k => byLayer[k].Count)];
-        string suggested = ranked[0];
-        ed.WriteMessage($"\nDentro de la ventana, por capa: {string.Join(", ", ranked.Select(k => $"{k} ({byLayer[k].Count} segmentos, {axesByLayer[k]} ejes)"))}.");
-        PromptResult layerAnswer = ed.GetString(new PromptStringOptions($"\nCapas de las caras de muro, separadas por coma, o * para todas <{suggested}>: ") { AllowSpaces = true });
+        if (survey.Layers.Any(l => l.ExplicitOnly))
+        {
+            ed.WriteMessage($"\nSolo si se nombran: {Describe(survey.Layers.Where(l => l.ExplicitOnly))}.");
+        }
+
+        string? suggested = survey.SuggestedLayer;
+        string prompt = suggested is null
+            ? "\nCapas de las caras de muro, separadas por coma: "
+            : $"\nCapas de las caras de muro, separadas por coma, o * para todas las habituales <{suggested}>: ";
+        PromptResult layerAnswer = ed.GetString(new PromptStringOptions(prompt) { AllowSpaces = true });
         if (layerAnswer.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIEJES"); return; }
 
-        string answer = string.IsNullOrWhiteSpace(layerAnswer.StringResult) ? suggested : layerAnswer.StringResult.Trim();
-        string[] layers = answer == "*" ? [.. byLayer.Keys] : answer.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        string[] missing = [.. layers.Where(l => !byLayer.ContainsKey(l))];
-        if (missing.Length > 0 || layers.Length == 0)
+        string answer = string.IsNullOrWhiteSpace(layerAnswer.StringResult) ? suggested ?? "" : layerAnswer.StringResult.Trim();
+        string[] layers = answer == "*"
+            ? [.. survey.Layers.Where(l => !l.ExplicitOnly).Select(l => l.Layer)]
+            : answer.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var gapOptions = new PromptDoubleOptions($"\nUnir tramos alineados separados hasta (m, máximo {AxisDetectionOptions.LargestMergeGapM:0})")
         {
-            ed.WriteMessage($"\nWIFIEJES: sin segmentos dentro de la ventana en la capa '{string.Join("', '", missing)}'. No se creó ningún eje.\n");
-            return;
-        }
+            DefaultValue = AxisDefaults.MergeGapM,
+            UseDefaultValue = true,
+            AllowNegative = false,
+            AllowZero = true,
+        };
+        PromptDoubleResult gapAnswer = ed.GetDouble(gapOptions);
+        if (gapAnswer.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIEJES"); return; }
 
-        List<FaceSegment> faces = [.. layers.SelectMany(l => byLayer[l])];
+        OperationResult<AxisGeneration> generated = service.GenerateAxes(window, layers, gapAnswer.Value);
+        CommandOutput.Problems(ed, "WIFIEJES", generated.Errors, generated.Warnings);
+        if (!generated.Succeeded) return;
 
-        AxisDetection result = WallAxisDetector.Detect(faces);
-        using (Transaction tr = db.TransactionManager.StartTransaction())
-        {
-            DrawingStore.EnsureAll(db, tr);
-            BlockTableRecord modelSpace = ModelSpace.Open(db, tr, OpenMode.ForWrite);
-            foreach (WallAxis axis in result.Axes)
-            {
-                var line = new Line(ModelSpace.ToDrawing(unit, axis.Axis.A), ModelSpace.ToDrawing(unit, axis.Axis.B))
-                {
-                    Layer = WifiHeatNames.WallLayer,
-                };
-                ModelSpace.Add(modelSpace, tr, line);
-                WifiXData.WriteWall(line, "", Math.Round(axis.ThicknessM, 3));
-            }
-
-            tr.Commit();
-        }
-
-        ed.WriteMessage(string.Create(Es, $"\nWIFIEJES: {result.Axes.Count} eje(s) creados en {WifiHeatNames.WallLayer} a partir de {faces.Count} segmento(s)."));
-        if (result.Axes.Count > 0)
+        AxisGeneration result = generated.Value!;
+        ed.WriteMessage(string.Create(Es,
+            $"\nWIFIEJES: {result.AxisCount} eje(s) en {WifiHeatNames.WallLayer} a partir de {result.SegmentCount} segmento(s): {result.Created} creado(s), {result.Kept} conservado(s), {result.Removed} anterior(es) borrado(s). Umbral de unión {result.MergeGapM:0.00} m."));
+        if (result.AxisCount > 0)
         {
             ed.WriteMessage(string.Create(Es,
-                $"\n  Espesor estimado: {result.Axes.Min(x => x.ThicknessM):0.###} a {result.Axes.Max(x => x.ThicknessM):0.###} m. Falta asignar el material con WIFIWALL (Enter en el espesor lo conserva)."));
+                $"\n  Espesor estimado: {result.MinThicknessM:0.###} a {result.MaxThicknessM:0.###} m. Falta asignar el material con WIFIWALL (Enter en el espesor lo conserva)."));
         }
 
         PrintIds(ed, "Segmentos sin par", result.Unpaired);
@@ -97,50 +92,8 @@ public sealed class AxisCommands
         ed.WriteMessage("\n");
     });
 
-    /// <summary>Líneas y polilíneas (tramos rectos) con todos sus extremos dentro de la ventana, fuera de las capas propias.</summary>
-    private static Dictionary<string, List<FaceSegment>> ReadFaces(Database db, DrawingUnit unit, BoundingBox window)
-    {
-        var byLayer = new Dictionary<string, List<FaceSegment>>(StringComparer.OrdinalIgnoreCase);
-        using Transaction tr = db.TransactionManager.StartTransaction();
-        foreach (ObjectId id in ModelSpace.Open(db, tr, OpenMode.ForRead))
-        {
-            if (tr.GetObject(id, OpenMode.ForRead) is not Curve curve) continue;
-            if (curve.Layer.StartsWith("WIFIHEAT_", StringComparison.OrdinalIgnoreCase)) continue;
-
-            var segments = new List<FaceSegment>();
-            string handle = curve.Handle.ToString();
-            if (curve is Line line)
-            {
-                segments.Add(new FaceSegment(handle, Segment(unit, line.StartPoint, line.EndPoint)));
-            }
-            else if (curve is Polyline polyline)
-            {
-                int vertices = polyline.NumberOfVertices;
-                int count = polyline.Closed ? vertices : vertices - 1;
-                for (int i = 0; i < count; i++)
-                {
-                    if (polyline.GetBulgeAt(i) != 0) continue;
-                    segments.Add(new FaceSegment($"{handle}/{i}", Segment(unit, polyline.GetPoint3dAt(i), polyline.GetPoint3dAt((i + 1) % vertices))));
-                }
-            }
-            else
-            {
-                continue;
-            }
-
-            IReadOnlyList<FaceSegment> inside = WallAxisDetector.InsideWindow(segments, window);
-            if (inside.Count != segments.Count || inside.Count == 0) continue;
-
-            if (!byLayer.TryGetValue(curve.Layer, out List<FaceSegment>? list)) byLayer[curve.Layer] = list = [];
-            list.AddRange(inside);
-        }
-
-        tr.Commit();
-        return byLayer;
-    }
-
-    private static Segment2 Segment(DrawingUnit unit, Point3d a, Point3d b) =>
-        new(DrawingUnits.ToMetres(unit, a.X, a.Y), DrawingUnits.ToMetres(unit, b.X, b.Y));
+    private static string Describe(IEnumerable<AxisLayerInfo> layers) =>
+        string.Join(", ", layers.Select(l => $"{l.Layer} ({l.SegmentCount} segmentos, {l.AxisCount} ejes)"));
 
     private static void PrintIds(Editor ed, string title, IReadOnlyList<string> ids)
     {

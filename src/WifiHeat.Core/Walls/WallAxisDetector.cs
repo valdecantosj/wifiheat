@@ -21,8 +21,16 @@ public sealed record AxisDetectionOptions
     public double MinOverlapM { get; init; } = 0.1;
     public double AngleToleranceDeg { get; init; } = 1;
 
-    /// <summary>Ejes colineales separados por menos que esto se unen (cruce de un muro perpendicular).</summary>
-    public double MaxMergeGapM { get; init; } = 0.5;
+    public const double DefaultMergeGapM = 0.2;
+    public const double LargestMergeGapM = 2;
+
+    /// <summary>Ejes colineales separados por no más que esto se unen; las aberturas más angostas se cierran.</summary>
+    public double MaxMergeGapM { get; init; } = DefaultMergeGapM;
+
+    public static string? MergeGapError(double gapM) =>
+        double.IsFinite(gapM) && gapM >= 0 && gapM <= LargestMergeGapM
+            ? null
+            : string.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), $"El umbral de unión debe estar entre 0 y {LargestMergeGapM:0} m.");
 
     /// <summary>Holgura sobre medio espesor al prolongar un eje hasta el eje de otro muro.</summary>
     public double ExtendToleranceM { get; init; } = 0.05;

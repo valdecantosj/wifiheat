@@ -1,6 +1,7 @@
 using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Materials;
 using WifiHeat.Core.Simulation;
+using WifiHeat.Core.Walls;
 using WifiHeat.Core.Workflow;
 
 namespace WifiHeat.Core.Service;
@@ -57,8 +58,45 @@ public sealed record DrawingWall(Wall Wall, string Layer);
 
 public sealed record DrawingContents(IReadOnlyList<DrawingWall> Walls, IReadOnlyList<ValidationIssue> Issues);
 
-public sealed record CoverageAreaRead(Polygon2? Polygon, string Description, string? Warning);
+public sealed record CoverageAreaRead(Polygon2? Polygon, string Description, string? Warning, string? Handle = null);
 
 public sealed record WallAssignment(string Handle, string MaterialId, double ThicknessM);
 
 public sealed record OverlayOutcome(string? ImagePath, IReadOnlyList<string> Warnings);
+
+/// <summary>Unidad guardada en el dibujo (null si falta elegirla) y la que sugieren sus variables.</summary>
+public sealed record DrawingSetup(DrawingUnit? Unit, DrawingUnit SuggestedUnit, string DeclaredUnits);
+
+/// <summary>Área de cobertura vigente. IsCustom false = rectángulo de los muros.</summary>
+public sealed record CoverageAreaInfo(bool IsCustom, string Description, string? Handle, int VertexCount, double AreaM2, BoundingBox? Bounds, string? Warning);
+
+/// <summary>
+/// Capa con segmentos dentro de la ventana y cuántos ejes daría por sí sola.
+/// ExplicitOnly: no se procesa salvo que el usuario la nombre (capa 0, ventanas).
+/// </summary>
+public sealed record AxisLayerInfo(string Layer, int SegmentCount, int AxisCount, bool IsSuggested, bool ExplicitOnly);
+
+public sealed record AxisSurvey(BoundingBox WindowM, IReadOnlyList<AxisLayerInfo> Layers)
+{
+    public string? SuggestedLayer => Layers.FirstOrDefault(l => l.IsSuggested)?.Layer;
+}
+
+/// <summary>Resultado de generar ejes. Kept: ejes anteriores que coinciden y se conservan; Removed: anteriores borrados.</summary>
+public sealed record AxisGeneration(
+    int SegmentCount,
+    int AxisCount,
+    int Created,
+    int Kept,
+    int Removed,
+    double MinThicknessM,
+    double MaxThicknessM,
+    double MergeGapM,
+    IReadOnlyList<string> Unpaired,
+    IReadOnlyList<string> PartlyUnpaired);
+
+public sealed record LayerFaces(string Layer, IReadOnlyList<FaceSegment> Faces);
+
+/// <summary>Eje creado antes por la generación automática, identificado por su marca en el dibujo.</summary>
+public sealed record GeneratedAxis(string Handle, Segment2 Axis);
+
+public sealed record NewAxis(Segment2 Axis, double ThicknessM);

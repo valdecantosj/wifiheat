@@ -88,6 +88,23 @@ public static class RasterOverlayRenderer
         return new OverlayResult(1, path, warnings);
     }
 
+    /// <summary>Cambia la atenuación de la imagen ya dibujada. Devuelve cuántas imágenes se modificaron.</summary>
+    public static int SetFade(Database db, Transaction tr, int fadePercent)
+    {
+        int changed = 0;
+        foreach (ObjectId id in ModelSpace.Open(db, tr, OpenMode.ForRead))
+        {
+            if (tr.GetObject(id, OpenMode.ForRead) is not RasterImage raster) continue;
+            if (!string.Equals(raster.Layer, WifiHeatNames.OverlayLayer, StringComparison.OrdinalIgnoreCase)) continue;
+
+            raster.UpgradeOpen();
+            raster.Fade = (byte)Math.Clamp(fadePercent, OverlayFade.MinPercent, OverlayFade.MaxPercent);
+            changed++;
+        }
+
+        return changed;
+    }
+
     /// <summary>Siguiente número libre: uno más que el mayor existente.</summary>
     public static string NextPath(string folder, string baseName)
     {

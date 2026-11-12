@@ -1,10 +1,8 @@
-using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using WifiHeat.AutoCAD.Reading;
 using WifiHeat.Core.Geometry;
-using CoreApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
+using WifiHeat.Core.Service;
+using WifiHeat.Core.Workflow;
 
 namespace WifiHeat.AutoCAD.Commands;
 
@@ -18,12 +16,12 @@ public sealed class SetupCommands
     [CommandMethod("WIFISETUP")]
     public void Setup() => CommandGuard.Run("WIFISETUP", doc =>
     {
-        Database db = doc.Database;
         Editor ed = doc.Editor;
+        AutoCadWifiHeatService service = Sessions.Service(doc);
+        DrawingSetup setup = service.GetDrawingSetup();
+        DrawingUnit suggested = setup.Unit ?? setup.SuggestedUnit;
 
-        DrawingUnit suggested = DrawingStore.ReadUnit(db) ?? DrawingStore.SuggestUnit(db);
-
-        var options = new PromptKeywordOptions($"\nUnidad del dibujo (INSUNITS={db.Insunits})") { AllowNone = true };
+        var options = new PromptKeywordOptions($"\nUnidad del dibujo ({setup.DeclaredUnits})") { AllowNone = true };
         options.Keywords.Add(Metres);
         options.Keywords.Add(Centimetres, Centimetres, "Centímetros");
         options.Keywords.Add(Millimetres, Millimetres, "Milímetros");
@@ -38,14 +36,9 @@ public sealed class SetupCommands
             _ => DrawingUnit.Metres,
         };
 
-        using (Transaction tr = db.TransactionManager.StartTransaction())
-        {
-            DrawingStore.EnsureAll(db, tr);
-            DrawingStore.WriteUnit(db, tr, unit);
-            tr.Commit();
-        }
-
-        ed.WriteMessage($"\nWIFISETUP: capas y aplicación {WifiHeatNames.AppName} listas. Unidad del dibujo: {DrawingUnits.Label(unit)}.\n");
+        OperationResult<DrawingUnit> result = service.SetDrawingUnit(unit);
+        CommandOutput.Problems(ed, "WIFISETUP", result.Errors, result.Warnings);
+        if (result.Succeeded) ed.WriteMessage($"\nWIFISETUP: capas y aplicación {WifiHeatNames.AppName} listas. Unidad del dibujo: {DrawingUnits.Label(unit)}.\n");
     });
 
     private static string Keyword(DrawingUnit unit) => unit switch
