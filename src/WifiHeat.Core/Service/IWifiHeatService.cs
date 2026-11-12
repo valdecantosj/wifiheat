@@ -21,6 +21,9 @@ public interface IWifiHeatService
 
     string SuggestedExportPath { get; }
 
+    /// <summary>Resumen del último cálculo hecho en esta sesión, aunque ya no esté vigente; null si no hubo ninguno.</summary>
+    CalculationSummary? LastCalculation { get; }
+
     DrawingSetup GetDrawingSetup();
 
     /// <summary>Guarda la unidad del dibujo y crea las capas propias si faltan.</summary>

@@ -44,6 +44,8 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     public abstract string SuggestedExportPath { get; }
 
+    public CalculationSummary? LastCalculation { get; private set; }
+
     public DrawingSetup GetDrawingSetup() => ReadSetup();
 
     public OperationResult<DrawingUnit> SetDrawingUnit(DrawingUnit unit)
@@ -272,10 +274,11 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         warnings.AddRange(overlay.Warnings);
 
         GridSpec spec = grid.Spec;
-        return OperationResult<CalculationSummary>.Ok(new CalculationSummary(
+        LastCalculation = new CalculationSummary(
             spec.CellCount, spec.Columns, spec.Rows, spec.CellSizeM, grid.ValueCount, grid.Min, grid.Max,
             watch.Elapsed.TotalMilliseconds, imageWatch.Elapsed.TotalMilliseconds,
-            image.Width, image.Height, image.PixelSizeM, Session.OverlayFadePercent, overlay.ImagePath, area.Description, warnings), warnings);
+            image.Width, image.Height, image.PixelSizeM, Session.OverlayFadePercent, overlay.ImagePath, area.Description, warnings);
+        return OperationResult<CalculationSummary>.Ok(LastCalculation, warnings);
     }
 
     public OperationResult<QueryResult> Query(Vec2 pointM)

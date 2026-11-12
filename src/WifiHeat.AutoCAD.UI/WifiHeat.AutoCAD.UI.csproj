@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Panel WPF de WifiHeat para AutoCAD 2027 (comando WIFIPANEL).
+    Referencia acmgd.dll (paletas), así que solo se carga en AutoCAD con interfaz, nunca en accoreconsole.
+    ViewModels y vistas no usan tipos de Autodesk: solo la carpeta Host habla con AutoCAD.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Library</OutputType>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WifiHeat.Core\WifiHeat.Core.csproj" />
+    <ProjectReference Include="..\WifiHeat.AutoCAD\WifiHeat.AutoCAD.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AutoCAD.NET = acmgd.dll (más Core y Model). Solo para compilar: no se copia a bin. -->
+    <PackageReference Include="AutoCAD.NET" Version="26.0.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>
