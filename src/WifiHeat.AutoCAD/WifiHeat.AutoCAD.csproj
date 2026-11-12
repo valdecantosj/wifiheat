@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Adaptador para AutoCAD 2027, cargado con NETLOAD.
+    Lee el dibujo, llama a WifiHeat.Core y presenta el resultado. No calcula.
+    NO referencia acmgd.dll (UI de AutoCAD) para poder cargarse también en accoreconsole.exe.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Library</OutputType>
+    <!-- Windows Forms aporta System.Drawing (GDI+) para generar el PNG. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WifiHeat.Core\WifiHeat.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Paquetes oficiales de Autodesk, solo para compilar:
+      ExcludeAssets="runtime" evita copiar las DLL a bin (Copy Local = False).
+      AutoCAD.NET.Core = accoremgd.dll · AutoCAD.NET.Model = acdbmgd.dll.
+    -->
+    <PackageReference Include="AutoCAD.NET.Core" Version="26.0.0" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Model" Version="26.0.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\config\materials.json" Link="materials.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

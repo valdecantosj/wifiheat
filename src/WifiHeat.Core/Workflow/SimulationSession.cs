@@ -1,0 +1,88 @@
+using WifiHeat.Core.Geometry;
+using WifiHeat.Core.Materials;
+using WifiHeat.Core.Propagation;
+using WifiHeat.Core.Simulation;
+
+namespace WifiHeat.Core.Workflow;
+
+/// <summary>
+/// Flujo de simulación de un documento: validar → AP → calcular → consultar.
+/// Lo comparten comandos y panel; no depende de AutoCAD.
+/// </summary>
+public sealed class SimulationSession(MaterialCatalog catalog)
+{
+    public const double DefaultCellSizeM = 0.5;
+
+    public MaterialCatalog Catalog { get; } = catalog;
+
+    public RadioSettings Settings { get; private set; } = new();
+
+    public double CellSizeM { get; private set; } = DefaultCellSizeM;
+
+    public IReadOnlyList<Wall> Walls { get; private set; } = [];
+
+    public ValidationReport? Validation { get; private set; }
+
+    public AccessPoint? AccessPoint { get; private set; }
+
+    public RssiGrid? LastGrid { get; private set; }
+
+    private SimulationScene? _scene;
+
+    /// <summary>Carga los muros leídos del plano y los valida. Invalida el último cálculo.</summary>
+    public ValidationReport LoadWalls(IReadOnlyList<Wall> walls, IEnumerable<ValidationIssue>? hostIssues = null)
+    {
+        Walls = walls;
+        Validation = SceneValidator.Validate(walls, Catalog, hostIssues);
+        _scene = Validation.IsValid ? new SimulationScene(walls, Catalog) : null;
+        LastGrid = null;
+        return Validation;
+    }
+
+    public void PlaceAccessPoint(Vec2 position)
+    {
+        AccessPoint = new AccessPoint(position);
+        LastGrid = null;
+    }
+
+    public OperationResult<RadioSettings> Configure(RadioSettings settings, double cellSizeM)
+    {
+        var errors = settings.Validate().ToList();
+        if (cellSizeM is < 0.05 or > 5) errors.Add("La resolución debe estar entre 0,05 y 5 m.");
+        if (errors.Count > 0) return new(null, errors, []);
+
+        Settings = settings;
+        CellSizeM = cellSizeM;
+        LastGrid = null;
+        return OperationResult<RadioSettings>.Ok(settings);
+    }
+
+    public OperationResult<RssiGrid> Calculate()
+    {
+        if (Validation is null) return OperationResult<RssiGrid>.Fail("Primero validar el plano (WIFIVALIDATE).");
+        if (_scene is null) return OperationResult<RssiGrid>.Fail($"El plano tiene {Validation.ErrorCount} error(es) de validación. Corregirlos y validar de nuevo.");
+        if (AccessPoint is null) return OperationResult<RssiGrid>.Fail("Falta ubicar el AP (WIFIADDAP).");
+
+        BoundingBox bounds = _scene.Bounds();
+        bounds = BoundingBox.FromPoints([bounds.Min, bounds.Max, AccessPoint.Position]).Expand(CellSizeM);
+        GridSpec spec = GridSpec.Cover(bounds, CellSizeM);
+
+        var warnings = new List<string>();
+        if (spec.CellCount > GridSpec.LargeGridWarningCells)
+        {
+            warnings.Add($"{ValidationIssue.LargeArea}: {spec.CellCount:N0} celdas ({bounds.Width:0.#} × {bounds.Height:0.#} m). " +
+                         "Revisar unidades del plano o usar una resolución mayor.");
+        }
+
+        LastGrid = GridCalculator.Calculate(_scene, AccessPoint, Settings, spec);
+        return OperationResult<RssiGrid>.Ok(LastGrid, warnings);
+    }
+
+    /// <summary>Consulta en el punto exacto indicado (no el centro de celda).</summary>
+    public OperationResult<PointCalculation> Query(Vec2 point)
+    {
+        if (_scene is null) return OperationResult<PointCalculation>.Fail("El plano no está validado sin errores.");
+        if (AccessPoint is null) return OperationResult<PointCalculation>.Fail("Falta ubicar el AP (WIFIADDAP).");
+        return OperationResult<PointCalculation>.Ok(PointCalculator.Calculate(_scene, AccessPoint, Settings, point));
+    }
+}

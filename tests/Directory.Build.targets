@@ -1,0 +1,7 @@
+<Project>
+  <!-- dotnet test ejecuta "dotnet exec <dll>" en lugar del .exe sin firmar (Smart App Control lo bloquea). -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <RunCommand>dotnet</RunCommand>
+    <RunArguments>exec "$(TargetPath)"</RunArguments>
+  </PropertyGroup>
+</Project>

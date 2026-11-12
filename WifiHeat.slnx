@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WifiHeat.Core/WifiHeat.Core.csproj" />
+    <Project Path="src/WifiHeat.AutoCAD/WifiHeat.AutoCAD.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WifiHeat.Core.Tests/WifiHeat.Core.Tests.csproj" />
+  </Folder>
+</Solution>

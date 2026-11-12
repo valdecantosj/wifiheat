@@ -1,0 +1,23 @@
+# Integración continua (CI): en cada push o pull request, GitHub compila la solución
+# completa y ejecuta las pruebas de Core. No abre AutoCAD ni prueba el plugin en ejecución.
+name: Build y tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest   # el proyecto AutoCAD apunta a net10.0-windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Compilar solución (Core + AutoCAD + Tests)
+        run: dotnet build WifiHeat.slnx --configuration Release
+      - name: Ejecutar pruebas de Core
+        run: dotnet test WifiHeat.slnx --configuration Release --no-build

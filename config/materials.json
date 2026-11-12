@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "status": "demo-assumptions",
+  "note": "Pérdida de penetración por muro completo, en dB positivos. Valores publicados por fuentes de práctica profesional; no son mediciones propias. El espesor no modifica la pérdida. null no equivale a 0 dB.",
+  "materials": [
+    {
+      "id": "concrete",
+      "name": "Hormigón",
+      "lossDb": { "2.4GHz": 22.8, "5GHz": 44.8 },
+      "sources": ["iBwave (2018), A closer look at attenuation across materials: 'Concrete – Heavy' 22.792 / 44.769 dB. https://blog.ibwave.com/a-closer-look-at-attenuation-across-materials-the-2-4ghz-5ghz-bands/"]
+    },
+    {
+      "id": "solid-brick",
+      "name": "Ladrillo macizo",
+      "lossDb": { "2.4GHz": 9.0, "5GHz": 17.5 },
+      "sources": ["Interline, Building Materials and Wi-Fi Signal Loss: 'Brick wall ~120 mm' 8–10 / 15–20 dB (punto medio). https://interline.pl/Information-and-Tips/Building-Materials-and-Wi-Fi-Signal-Loss-2.4-GHz-and-5-GHz"]
+    },
+    {
+      "id": "hollow-brick",
+      "name": "Ladrillo hueco",
+      "lossDb": { "2.4GHz": 6.0, "5GHz": 10.0 },
+      "sources": ["Supuesto sin fuente directa: valor intermedio entre placa de yeso y ladrillo macizo, por su menor masa. Reemplazar por un valor publicado cuando se disponga."]
+    },
+    {
+      "id": "drywall",
+      "name": "Placa de yeso",
+      "lossDb": { "2.4GHz": 5.4, "5GHz": 10.1 },
+      "sources": ["iBwave (2018): 'Dry Wall Partition' 5.388 / 10.114 dB. https://blog.ibwave.com/a-closer-look-at-attenuation-across-materials-the-2-4ghz-5ghz-bands/"]
+    },
+    {
+      "id": "glass",
+      "name": "Vidrio común",
+      "lossDb": { "2.4GHz": 3.0, "5GHz": 3.5 },
+      "sources": ["Interline: 'Clear glass window' 2–4 / 0–7 dB (punto medio)."]
+    }
+  ]
+}

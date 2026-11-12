@@ -1,0 +1,34 @@
+# Compilación e IDE
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.sln.docstates
+TestResults/
+artifacts/
+dist/
+
+# Ajustes locales y credenciales
+.env
+.env.*
+!.env.example
+*.local.json
+*.local.md
+
+# Bibliotecas de Autodesk
+acmgd.dll
+acdbmgd.dll
+accoremgd.dll
+
+# Archivos auxiliares de AutoCAD y del sistema
+*.dwl
+*.dwl2
+*.bak
+*.sv$
+ErrorReports/
+Thumbs.db
+.DS_Store
+
+# Planos sin permiso de publicación
+samples/private/
