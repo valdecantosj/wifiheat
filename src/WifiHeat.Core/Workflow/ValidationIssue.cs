@@ -13,10 +13,10 @@ public sealed record ValidationIssue(IssueSeverity Severity, string Code, string
 {
     public const string MissingProperty = "FALTA PROPIEDAD";
     public const string UnknownMaterial = "MATERIAL DESCONOCIDO";
-    public const string InvalidGeometry = "GEOMETRIA INVALIDA";
+    public const string InvalidGeometry = "GEOMETRÍA INVÁLIDA";
     public const string NoWalls = "SIN MUROS";
     public const string Units = "UNIDADES";
-    public const string LargeArea = "AREA GRANDE";
+    public const string LargeArea = "ÁREA GRANDE";
     public const string SuspiciousScale = "ESCALA SOSPECHOSA";
 
     public override string ToString() =>

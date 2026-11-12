@@ -35,6 +35,11 @@ public sealed class WallCommands
         string ids = string.Join("/", catalog.All.Select(m => m.Id));
         PromptResult materialAnswer = ed.GetString(new PromptStringOptions($"\nMaterial [{ids}]: ") { AllowSpaces = false });
         if (materialAnswer.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIWALL"); return; }
+        if (!catalog.TryGet(materialAnswer.StringResult.Trim(), out Material material))
+        {
+            ed.WriteMessage($"\nWIFIWALL: {ValidationIssue.UnknownMaterial}: '{materialAnswer.StringResult}' no está en el catálogo. Valores posibles: {ids}. No se modificó ningún muro.\n");
+            return;
+        }
 
         var thicknessOptions = new PromptDoubleOptions(string.Create(Es,
             $"\nEspesor en metros o Enter para conservar el de cada muro ({WifiHeatService.DefaultThicknessM:0.00} si no tiene)"))
@@ -52,7 +57,6 @@ public sealed class WallCommands
         CommandOutput.Problems(ed, "WIFIWALL", result.Errors, result.Warnings);
         if (!result.Succeeded) return;
 
-        catalog.TryGet(materialAnswer.StringResult.Trim(), out Material material);
         string thicknessText = thickness is null ? "espesor conservado" : string.Create(Es, $"espesor {thickness:0.###} m");
         ed.WriteMessage($"\nWIFIWALL: {result.Value} muro(s) con material {material.Name} ({material.Id}) y {thicknessText}.\n");
     });

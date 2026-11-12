@@ -16,6 +16,10 @@ public static class CommandGuard
         {
             body(doc);
         }
+        catch (System.Exception ex) when (ex is FileNotFoundException or System.Text.Json.JsonException or WifiHeat.Core.Materials.MaterialCatalogException)
+        {
+            doc.Editor.WriteMessage($"\n{command}: no se pudo leer el catálogo de materiales ({Reading.MaterialCatalogFile.FilePath}): {ex.Message}\n");
+        }
         catch (System.Exception ex)
         {
             doc.Editor.WriteMessage($"\n{command}: el comando se interrumpió por un error inesperado ({ex.GetType().Name}: {ex.Message}). Los cambios de este paso no se guardaron.\n");

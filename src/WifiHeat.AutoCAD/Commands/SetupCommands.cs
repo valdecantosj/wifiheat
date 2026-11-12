@@ -16,9 +16,8 @@ public sealed class SetupCommands
 
     /// <summary>Crea capas y aplicación registrada, y guarda la unidad del dibujo.</summary>
     [CommandMethod("WIFISETUP")]
-    public void Setup()
+    public void Setup() => CommandGuard.Run("WIFISETUP", doc =>
     {
-        Document doc = CoreApp.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         Editor ed = doc.Editor;
 
@@ -30,7 +29,7 @@ public sealed class SetupCommands
         options.Keywords.Add(Millimetres, Millimetres, "Milímetros");
         options.Keywords.Default = Keyword(suggested);
         PromptResult answer = ed.GetKeywords(options);
-        if (answer.Status != PromptStatus.OK && answer.Status != PromptStatus.None) return;
+        if (answer.Status is not (PromptStatus.OK or PromptStatus.None)) { CommandGuard.Cancelled(ed, "WIFISETUP"); return; }
 
         DrawingUnit unit = answer.Status == PromptStatus.None ? suggested : answer.StringResult switch
         {
@@ -47,7 +46,7 @@ public sealed class SetupCommands
         }
 
         ed.WriteMessage($"\nWIFISETUP: capas y aplicación {WifiHeatNames.AppName} listas. Unidad del dibujo: {DrawingUnits.Label(unit)}.\n");
-    }
+    });
 
     private static string Keyword(DrawingUnit unit) => unit switch
     {

@@ -10,19 +10,18 @@ namespace WifiHeat.AutoCAD.Commands;
 public sealed class DiagnosticCommands
 {
     [CommandMethod("WIFI")]
-    public void ShowHelp()
+    public void ShowHelp() => CommandGuard.Run("WIFI", doc =>
     {
-        Editor ed = CoreApp.DocumentManager.MdiActiveDocument.Editor;
+        Editor ed = doc.Editor;
         ed.WriteMessage($"\nWifiHeat {WifiHeatApplication.Version} · .NET {Environment.Version}");
         ed.WriteMessage("\nFlujo: WIFISETUP, WIFIEJES (opcional, muros de doble cara), WIFIWALL, WIFIVALIDATE, WIFIADDAP, WIFIAREA (opcional), WIFICALCULATE, WIFIQUERY, WIFIEXPORT.");
         ed.WriteMessage("\nDiagnóstico: WIFIINFO.\n");
-    }
+    });
 
     /// <summary>Lista unidades, extensión, capas y cantidad de entidades por capa y tipo en el espacio modelo.</summary>
     [CommandMethod("WIFIINFO")]
-    public void DrawingInfo()
+    public void DrawingInfo() => CommandGuard.Run("WIFIINFO", doc =>
     {
-        Document doc = CoreApp.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         Editor ed = doc.Editor;
 
@@ -58,5 +57,5 @@ public sealed class DiagnosticCommands
 
         tr.Commit();
         ed.WriteMessage("\n== FIN WIFIINFO ==\n");
-    }
+    });
 }
