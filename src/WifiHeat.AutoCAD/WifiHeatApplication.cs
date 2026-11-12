@@ -2,7 +2,6 @@ using CoreApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 using Autodesk.AutoCAD.Runtime;
 
 [assembly: ExtensionApplication(typeof(WifiHeat.AutoCAD.WifiHeatApplication))]
-[assembly: CommandClass(typeof(WifiHeat.AutoCAD.Commands.DiagnosticCommands))]
 
 namespace WifiHeat.AutoCAD;
 
