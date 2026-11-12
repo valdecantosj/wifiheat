@@ -23,7 +23,13 @@ $$L_{materiales}\,[\mathrm{dB}] = \sum_i L_i(\text{banda})$$
 | $L_{materiales}$ | Pérdida total de los muros cruzados | dB |
 | $L_i$ | Pérdida del muro $i$ según su material y la banda, de `config/materials.json` | dB |
 
-Por qué: cada muro que cruza el trayecto directo atenúa la señal. Se cuenta una sola vez por muro, y el espesor no cambia el valor.
+Por qué: cada muro que cruza el trayecto directo atenúa la señal. El espesor no cambia el valor.
+
+Reglas de conteo:
+
+- Cada muro cuenta a lo sumo una vez, aunque el trayecto lo toque en un vértice o en varios de sus tramos.
+- Si el trayecto toca varios muros en el mismo punto (con una tolerancia de 1 mm), como en una unión en T, un cruce o una esquina formada por dos muros, ese punto aporta una sola vez la pérdida mayor de esos muros. Lo mismo vale para dos muros superpuestos.
+- Los muros que el trayecto toca en puntos distintos se suman.
 
 ## Balance de enlace
 
@@ -51,7 +57,18 @@ Por qué: en escala logarítmica, las ganancias y las pérdidas de la cadena se 
 
 Cada intervalo incluye el límite inferior. La escala es orientativa: no garantiza conexión ni calidad de servicio.
 
-El mapa de calor usa un degradé continuo: el color se interpola linealmente en RGB entre colores vecinos de la tabla, con cada color ubicado en el límite inferior de su intervalo (el rojo, en −95 dBm). Por encima de −50 dBm el color es verde oscuro y por debajo de −95 dBm, rojo. La leyenda y la consulta de un punto siguen informando el intervalo.
+El mapa de calor usa un degradé continuo: el color se interpola linealmente en RGB entre colores vecinos de la tabla, y cada color queda anclado en el centro de su intervalo:
+
+| Color | Anclaje [dBm] |
+| --- | --- |
+| Verde oscuro | −50 (por encima, constante) |
+| Verde claro | −55 |
+| Amarillo verdoso | −63,5 |
+| Amarillo | −71 |
+| Naranja | −80 |
+| Rojo | −90 (por debajo, constante) |
+
+Así, el color puro aparece en el centro de cada intervalo y en los límites se ve la mezcla de los dos colores vecinos. La leyenda y la consulta de un punto usan los mismos seis colores y los mismos límites de la tabla anterior.
 
 ## Referencias
 

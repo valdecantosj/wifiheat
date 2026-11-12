@@ -36,3 +36,4 @@ samples/private/
 # Salida generada al probar el ejemplo
 samples/*-wifiheat.png
 samples/*_wifiheat.png
+samples/*_wifiheat_*.png
