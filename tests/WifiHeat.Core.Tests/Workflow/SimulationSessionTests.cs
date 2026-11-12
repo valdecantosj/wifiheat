@@ -59,6 +59,7 @@ public class SimulationSessionTests
         var session = new SimulationSession(Catalog);
         session.LoadWalls([new Wall("W", [Axis], "test", 0.15)]);
         session.PlaceAccessPoint(new Vec2(0, 0));
+        session.SetCoverageArea(Polygon2.Rectangle(new BoundingBox(new Vec2(-1, -5), new Vec2(11, 5))));
 
         OperationResult<RssiGrid> grid = session.Calculate();
         Assert.True(grid.Succeeded);
@@ -83,11 +84,11 @@ public class SimulationSessionTests
     }
 
     [Fact]
-    public void Access_point_far_from_the_walls_is_rejected_instead_of_calculated()
+    public void Walls_far_apart_are_rejected_instead_of_calculated()
     {
         var session = new SimulationSession(Catalog);
-        session.LoadWalls([new Wall("W", [Axis], "test", 0.15)]);
-        session.PlaceAccessPoint(new Vec2(5000, 5000));
+        session.LoadWalls([new Wall("W", [Axis, new Segment2(new Vec2(5000, 5000), new Vec2(5001, 5000))], "test", 0.15)]);
+        session.PlaceAccessPoint(new Vec2(0, 0));
 
         OperationResult<RssiGrid> result = session.Calculate();
 

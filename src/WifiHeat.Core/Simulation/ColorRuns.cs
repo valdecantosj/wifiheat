@@ -5,7 +5,7 @@ public readonly record struct ColorRun(int Row, int StartColumn, int Length, int
 
 public static class ColorRuns
 {
-    /// <summary>Agrupa cada fila de la grilla en tramos del mismo nivel, de izquierda a derecha.</summary>
+    /// <summary>Agrupa cada fila de la grilla en tramos del mismo nivel, de izquierda a derecha. Las celdas sin valor no forman tramos.</summary>
     public static IReadOnlyList<ColorRun> FromGrid(RssiGrid grid)
     {
         GridSpec spec = grid.Spec;
@@ -13,18 +13,16 @@ public static class ColorRuns
         for (int row = 0; row < spec.Rows; row++)
         {
             int start = 0;
-            int level = SignalScale.IndexOf(grid[0, row]);
-            for (int column = 1; column < spec.Columns; column++)
+            int level = -1;
+            for (int column = 0; column <= spec.Columns; column++)
             {
-                int current = SignalScale.IndexOf(grid[column, row]);
+                int current = column < spec.Columns && grid.HasValue(column, row) ? SignalScale.IndexOf(grid[column, row]) : -1;
                 if (current == level) continue;
 
-                runs.Add(new ColorRun(row, start, column - start, level));
+                if (level >= 0) runs.Add(new ColorRun(row, start, column - start, level));
                 start = column;
                 level = current;
             }
-
-            runs.Add(new ColorRun(row, start, spec.Columns - start, level));
         }
 
         return runs;

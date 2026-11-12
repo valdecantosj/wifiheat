@@ -14,7 +14,7 @@ public sealed class DiagnosticCommands
     {
         Editor ed = CoreApp.DocumentManager.MdiActiveDocument.Editor;
         ed.WriteMessage($"\nWifiHeat {WifiHeatApplication.Version} · .NET {Environment.Version}");
-        ed.WriteMessage("\nFlujo: WIFISETUP, WIFIWALL, WIFIVALIDATE, WIFIADDAP, WIFICALCULATE, WIFIQUERY, WIFIEXPORT.");
+        ed.WriteMessage("\nFlujo: WIFISETUP, WIFIWALL, WIFIVALIDATE, WIFIADDAP, WIFIAREA (opcional), WIFICALCULATE, WIFIQUERY, WIFIEXPORT.");
         ed.WriteMessage("\nDiagnóstico: WIFIINFO.\n");
     }
 

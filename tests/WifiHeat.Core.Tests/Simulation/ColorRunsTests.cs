@@ -47,6 +47,17 @@ public class ColorRunsTests
     }
 
     [Fact]
+    public void Cells_without_value_break_runs_and_are_skipped()
+    {
+        var values = new double[5, 1];
+        values[0, 0] = -40; values[1, 0] = double.NaN; values[2, 0] = -40; values[3, 0] = -40; values[4, 0] = double.NaN;
+
+        IReadOnlyList<ColorRun> runs = ColorRuns.FromGrid(Grid(values));
+
+        Assert.Equal([new ColorRun(0, 0, 1, 0), new ColorRun(0, 2, 2, 0)], runs);
+    }
+
+    [Fact]
     public void Run_level_matches_the_scale_of_each_cell()
     {
         var values = new double[6, 3];

@@ -35,6 +35,11 @@ public sealed class CalculateCommands
             return;
         }
 
+        DrawingUnit unit = DrawingStore.ReadUnit(db)!.Value;
+        StoredArea area = AreaReader.Read(db, unit);
+        session.SetCoverageArea(area.Polygon);
+        if (area.Warning is not null) ed.WriteMessage($"\n  [AVISO] {area.Warning}");
+
         var watch = Stopwatch.StartNew();
         OperationResult<RssiGrid> result = session.Calculate();
         watch.Stop();
@@ -46,7 +51,6 @@ public sealed class CalculateCommands
         }
 
         RssiGrid grid = result.Value!;
-        DrawingUnit unit = DrawingStore.ReadUnit(db)!.Value;
         int entities;
         using (Transaction tr = db.TransactionManager.StartTransaction())
         {
@@ -60,5 +64,8 @@ public sealed class CalculateCommands
         GridSpec spec = grid.Spec;
         ed.WriteMessage(string.Create(Es,
             $"\nWIFICALCULATE: {spec.CellCount} celdas ({spec.Columns} × {spec.Rows}, {spec.CellSizeM:0.##} m) · RSSI mín {grid.Min:0.0} dBm · máx {grid.Max:0.0} dBm · cálculo {watch.Elapsed.TotalMilliseconds:0} ms · {entities} entidades de overlay.\n"));
+        ed.WriteMessage(area.Polygon is null
+            ? "  Área de cobertura: rectángulo de los muros.\n"
+            : $"  Área de cobertura: polilínea {area.Handle} ({grid.ValueCount} celdas con valor).\n");
     }
 }

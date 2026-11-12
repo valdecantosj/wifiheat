@@ -13,6 +13,8 @@ public sealed class SimulationSession(MaterialCatalog catalog)
 {
     public const double DefaultCellSizeM = 0.5;
 
+    private const double MinAreaSideM = 1e-6;
+
     public MaterialCatalog Catalog { get; } = catalog;
 
     public RadioSettings Settings { get; private set; } = new();
@@ -26,6 +28,9 @@ public sealed class SimulationSession(MaterialCatalog catalog)
     public AccessPoint? AccessPoint { get; private set; }
 
     public RssiGrid? LastGrid { get; private set; }
+
+    /// <summary>Área de cobertura definida por el usuario. Si es null se usa el rectángulo de los muros.</summary>
+    public Polygon2? CoverageArea { get; private set; }
 
     private SimulationScene? _scene;
 
@@ -42,6 +47,12 @@ public sealed class SimulationSession(MaterialCatalog catalog)
     public void PlaceAccessPoint(Vec2 position)
     {
         AccessPoint = new AccessPoint(position);
+        LastGrid = null;
+    }
+
+    public void SetCoverageArea(Polygon2? area)
+    {
+        CoverageArea = area;
         LastGrid = null;
     }
 
@@ -63,12 +74,27 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         if (_scene is null) return OperationResult<RssiGrid>.Fail($"El plano tiene {Validation.ErrorCount} error(es) de validación. Corregirlos y validar de nuevo.");
         if (AccessPoint is null) return OperationResult<RssiGrid>.Fail("Falta ubicar el AP (WIFIADDAP).");
 
-        BoundingBox bounds = _scene.Bounds();
-        bounds = BoundingBox.FromPoints([bounds.Min, bounds.Max, AccessPoint.Position]).Expand(CellSizeM);
+        Polygon2 area;
+        if (CoverageArea is not null)
+        {
+            area = CoverageArea;
+        }
+        else
+        {
+            BoundingBox walls = _scene.Bounds();
+            if (walls.Width < MinAreaSideM || walls.Height < MinAreaSideM)
+            {
+                return OperationResult<RssiGrid>.Fail("Los muros no encierran superficie (todos alineados). Definir el área de cobertura con WIFIAREA.");
+            }
+
+            area = Polygon2.Rectangle(walls);
+        }
+
+        BoundingBox bounds = area.Bounds;
         if (bounds.Width / CellSizeM * (bounds.Height / CellSizeM) > GridSpec.MaxGridCells)
         {
             return OperationResult<RssiGrid>.Fail(FormattableString.Invariant(
-                $"{ValidationIssue.LargeArea}: el área a calcular mide {bounds.Width:0.#} × {bounds.Height:0.#} m y supera el máximo de {GridSpec.MaxGridCells} celdas. Revisar la unidad del dibujo, la posición del AP o los muros alejados."));
+                $"{ValidationIssue.LargeArea}: el área a calcular mide {bounds.Width:0.#} × {bounds.Height:0.#} m y supera el máximo de {GridSpec.MaxGridCells} celdas. Revisar la unidad del dibujo, el área de cobertura o los muros alejados."));
         }
 
         GridSpec spec = GridSpec.Cover(bounds, CellSizeM);
@@ -80,7 +106,7 @@ public sealed class SimulationSession(MaterialCatalog catalog)
                          "Revisar unidades del plano o usar una resolución mayor.");
         }
 
-        LastGrid = GridCalculator.Calculate(_scene, AccessPoint, Settings, spec);
+        LastGrid = GridCalculator.Calculate(_scene, AccessPoint, Settings, spec, area);
         return OperationResult<RssiGrid>.Ok(LastGrid, warnings);
     }
 

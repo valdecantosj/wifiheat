@@ -84,6 +84,49 @@ public static class DrawingStore
         return unit;
     }
 
+    /// <summary>Guarda en el NOD una referencia a la polilínea del área de cobertura; null la quita.</summary>
+    public static void WriteAreaId(Database db, Transaction tr, ObjectId? polylineId)
+    {
+        var nod = (DBDictionary)tr.GetObject(db.NamedObjectsDictionaryId, OpenMode.ForWrite);
+        if (polylineId is null)
+        {
+            if (!nod.Contains(WifiHeatNames.AreaRecordKey)) return;
+            DBObject old = tr.GetObject(nod.GetAt(WifiHeatNames.AreaRecordKey), OpenMode.ForWrite);
+            nod.Remove(WifiHeatNames.AreaRecordKey);
+            old.Erase();
+            return;
+        }
+
+        using var data = new ResultBuffer(new TypedValue((int)DxfCode.SoftPointerId, polylineId.Value));
+        if (nod.Contains(WifiHeatNames.AreaRecordKey))
+        {
+            var existing = (Xrecord)tr.GetObject(nod.GetAt(WifiHeatNames.AreaRecordKey), OpenMode.ForWrite);
+            existing.Data = data;
+            return;
+        }
+
+        var record = new Xrecord { Data = data };
+        nod.SetAt(WifiHeatNames.AreaRecordKey, record);
+        tr.AddNewlyCreatedDBObject(record, true);
+    }
+
+    /// <summary>Devuelve la referencia guardada, aunque la entidad ya no exista; null si no hay área definida.</summary>
+    public static ObjectId? ReadAreaId(Database db, Transaction tr)
+    {
+        var nod = (DBDictionary)tr.GetObject(db.NamedObjectsDictionaryId, OpenMode.ForRead);
+        if (!nod.Contains(WifiHeatNames.AreaRecordKey)) return null;
+        if (tr.GetObject(nod.GetAt(WifiHeatNames.AreaRecordKey), OpenMode.ForRead) is not Xrecord record) return null;
+
+        using ResultBuffer? data = record.Data;
+        if (data is null) return ObjectId.Null;
+        foreach (TypedValue value in data)
+        {
+            if (value.Value is ObjectId id) return id;
+        }
+
+        return ObjectId.Null;
+    }
+
     public static DrawingUnit SuggestUnit(Database db) => db.Insunits switch
     {
         UnitsValue.Centimeters => DrawingUnit.Centimetres,
