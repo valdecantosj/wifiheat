@@ -65,6 +65,12 @@ public sealed class SimulationSession(MaterialCatalog catalog)
 
         BoundingBox bounds = _scene.Bounds();
         bounds = BoundingBox.FromPoints([bounds.Min, bounds.Max, AccessPoint.Position]).Expand(CellSizeM);
+        if (bounds.Width / CellSizeM * (bounds.Height / CellSizeM) > GridSpec.MaxGridCells)
+        {
+            return OperationResult<RssiGrid>.Fail(FormattableString.Invariant(
+                $"{ValidationIssue.LargeArea}: el área a calcular mide {bounds.Width:0.#} × {bounds.Height:0.#} m y supera el máximo de {GridSpec.MaxGridCells} celdas. Revisar la unidad del dibujo, la posición del AP o los muros alejados."));
+        }
+
         GridSpec spec = GridSpec.Cover(bounds, CellSizeM);
 
         var warnings = new List<string>();

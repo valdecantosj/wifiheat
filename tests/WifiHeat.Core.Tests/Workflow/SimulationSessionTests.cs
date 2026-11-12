@@ -81,4 +81,18 @@ public class SimulationSessionTests
 
         Assert.False(session.Calculate().Succeeded);
     }
+
+    [Fact]
+    public void Access_point_far_from_the_walls_is_rejected_instead_of_calculated()
+    {
+        var session = new SimulationSession(Catalog);
+        session.LoadWalls([new Wall("W", [Axis], "test", 0.15)]);
+        session.PlaceAccessPoint(new Vec2(5000, 5000));
+
+        OperationResult<RssiGrid> result = session.Calculate();
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(ValidationIssue.LargeArea, Assert.Single(result.Errors));
+        Assert.Null(session.LastGrid);
+    }
 }

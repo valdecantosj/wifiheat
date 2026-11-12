@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using WifiHeat.AutoCAD.Reading;
+using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Workflow;
 using CoreApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
@@ -29,6 +30,13 @@ public sealed class ValidateCommands
     public static void Print(Editor ed, string command, SimulationSession session, ValidationReport report)
     {
         ed.WriteMessage($"\n{command}: {session.Walls.Count} muro(s), {report.ErrorCount} error(es), {report.WarningCount} aviso(s).");
+        var points = session.Walls.SelectMany(w => w.Segments).SelectMany(s => new[] { s.A, s.B }).ToList();
+        if (points.Count > 0)
+        {
+            BoundingBox bounds = BoundingBox.FromPoints(points);
+            ed.WriteMessage($"\n  Envolvente de los muros: {bounds.Min} a {bounds.Max} m.");
+        }
+
         foreach (ValidationIssue issue in report.Issues)
         {
             ed.WriteMessage($"\n  {issue}");

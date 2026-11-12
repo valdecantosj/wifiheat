@@ -8,6 +8,9 @@ public sealed record GridSpec(Vec2 Origin, double CellSizeM, int Columns, int Ro
     /// <summary>Por encima de este número de celdas se emite una advertencia (área desproporcionada).</summary>
     public const int LargeGridWarningCells = 200_000;
 
+    /// <summary>Por encima de este número de celdas no se calcula.</summary>
+    public const int MaxGridCells = 2_000_000;
+
     public int CellCount => Columns * Rows;
 
     public double WidthM => Columns * CellSizeM;
