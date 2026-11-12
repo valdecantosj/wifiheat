@@ -23,10 +23,20 @@ public static class Sessions
         if (!ByDocument.TryGetValue(document, out SimulationSession? session))
         {
             session = new SimulationSession(MaterialCatalogFile.Catalog);
+            RestoreAccessPoint(document, session);
             ByDocument[document] = session;
         }
 
         return session;
+    }
+
+    private static void RestoreAccessPoint(Document document, SimulationSession session)
+    {
+        StoredAccessPoint? stored = AccessPointReader.Read(document.Database);
+        if (stored is null) return;
+
+        session.PlaceAccessPoint(stored.Position);
+        session.Configure(session.Settings with { Band = stored.Band, TxPowerDbm = stored.TxPowerDbm }, session.CellSizeM);
     }
 
     private static void OnDocumentToBeDestroyed(object? sender, DocumentCollectionEventArgs e) => ByDocument.Remove(e.Document);
