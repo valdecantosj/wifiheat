@@ -14,7 +14,8 @@ public sealed class DiagnosticCommands
     {
         Editor ed = CoreApp.DocumentManager.MdiActiveDocument.Editor;
         ed.WriteMessage($"\nWifiHeat {WifiHeatApplication.Version} · .NET {Environment.Version}");
-        ed.WriteMessage("\nComandos: WIFIINFO (diagnóstico del dibujo).\n");
+        ed.WriteMessage("\nFlujo: WIFISETUP, WIFIWALL, WIFIVALIDATE, WIFIADDAP, WIFICALCULATE, WIFIQUERY, WIFIEXPORT.");
+        ed.WriteMessage("\nDiagnóstico: WIFIINFO.\n");
     }
 
     /// <summary>Lista unidades, extensión, capas y cantidad de entidades por capa y tipo en el espacio modelo.</summary>
