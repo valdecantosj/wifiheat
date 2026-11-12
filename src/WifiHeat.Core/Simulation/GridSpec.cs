@@ -10,6 +10,10 @@ public sealed record GridSpec(Vec2 Origin, double CellSizeM, int Columns, int Ro
 
     public int CellCount => Columns * Rows;
 
+    public double WidthM => Columns * CellSizeM;
+
+    public double HeightM => Rows * CellSizeM;
+
     public Vec2 CellCenter(int column, int row) =>
         new(Origin.X + (column + 0.5) * CellSizeM, Origin.Y + (row + 0.5) * CellSizeM);
 
