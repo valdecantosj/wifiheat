@@ -51,6 +51,8 @@ Por qué: en escala logarítmica, las ganancias y las pérdidas de la cadena se 
 
 Cada intervalo incluye el límite inferior. La escala es orientativa: no garantiza conexión ni calidad de servicio.
 
+El mapa de calor usa un degradé continuo: el color se interpola linealmente en RGB entre colores vecinos de la tabla, con cada color ubicado en el límite inferior de su intervalo (el rojo, en −95 dBm). Por encima de −50 dBm el color es verde oscuro y por debajo de −95 dBm, rojo. La leyenda y la consulta de un punto siguen informando el intervalo.
+
 ## Referencias
 
 1. ITU-R, Recomendación P.525-5 (11/2024), *Calculation of free-space attenuation*. Pérdida básica de transmisión en el espacio libre.
