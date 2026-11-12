@@ -5,10 +5,10 @@ using CoreApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
 namespace WifiHeat.AutoCAD;
 
-/// <summary>Una sesión de simulación por documento abierto; se libera al cerrarlo.</summary>
+/// <summary>Un servicio (con su sesión de simulación) por documento abierto; se libera al cerrarlo.</summary>
 public static class Sessions
 {
-    private static readonly Dictionary<Document, SimulationSession> ByDocument = [];
+    private static readonly Dictionary<Document, AutoCadWifiHeatService> ByDocument = [];
 
     public static void Attach() => CoreApp.DocumentManager.DocumentToBeDestroyed += OnDocumentToBeDestroyed;
 
@@ -18,17 +18,20 @@ public static class Sessions
         ByDocument.Clear();
     }
 
-    public static SimulationSession For(Document document)
+    public static AutoCadWifiHeatService Service(Document document)
     {
-        if (!ByDocument.TryGetValue(document, out SimulationSession? session))
+        if (!ByDocument.TryGetValue(document, out AutoCadWifiHeatService? service))
         {
-            session = new SimulationSession(MaterialCatalogFile.Catalog);
+            var session = new SimulationSession(MaterialCatalogFile.Catalog);
             RestoreAccessPoint(document, session);
-            ByDocument[document] = session;
+            service = new AutoCadWifiHeatService(document, session);
+            ByDocument[document] = service;
         }
 
-        return session;
+        return service;
     }
+
+    public static SimulationSession For(Document document) => Service(document).Session;
 
     private static void RestoreAccessPoint(Document document, SimulationSession session)
     {

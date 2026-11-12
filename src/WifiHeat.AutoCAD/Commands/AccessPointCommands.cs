@@ -1,14 +1,10 @@
 using System.Globalization;
-using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using WifiHeat.AutoCAD.Rendering;
 using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Materials;
-using WifiHeat.Core.Propagation;
+using WifiHeat.Core.Service;
 using WifiHeat.Core.Workflow;
-using CoreApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
 namespace WifiHeat.AutoCAD.Commands;
 
@@ -19,53 +15,41 @@ public sealed class AccessPointCommands
 
     /// <summary>Ubica el AP, pide banda y potencia de transmisión y dibuja el marcador.</summary>
     [CommandMethod("WIFIADDAP")]
-    public void AddAccessPoint()
+    public void AddAccessPoint() => CommandGuard.Run("WIFIADDAP", doc =>
     {
-        Document doc = CoreApp.DocumentManager.MdiActiveDocument;
-        Database db = doc.Database;
         Editor ed = doc.Editor;
         if (!DrawingContext.TryGetUnit(doc, "WIFIADDAP", out DrawingUnit unit)) return;
-        if (!DrawingContext.TryGetPointM(ed, unit, "\nUbicación del AP: ", out Vec2 position)) return;
+        if (!DrawingContext.TryGetPointM(ed, unit, "\nUbicación del AP: ", out Vec2 position)) { CommandGuard.Cancelled(ed, "WIFIADDAP"); return; }
 
-        SimulationSession session = Sessions.For(doc);
-        session.PlaceAccessPoint(position);
+        AutoCadWifiHeatService service = Sessions.Service(doc);
+        SimulationSettings settings = service.Settings;
 
-        RadioSettings settings = session.Settings;
         var bandOptions = new PromptKeywordOptions("\nBanda en GHz") { AllowNone = true };
         bandOptions.Keywords.Add(Keyword2_4);
         bandOptions.Keywords.Add(Keyword5);
         bandOptions.Keywords.Default = settings.Band == Band.Ghz5 ? Keyword5 : Keyword2_4;
         PromptResult bandAnswer = ed.GetKeywords(bandOptions);
-        if (bandAnswer.Status == PromptStatus.OK)
-        {
-            settings = settings with { Band = bandAnswer.StringResult == Keyword5 ? Band.Ghz5 : Band.Ghz2_4 };
-        }
+        if (bandAnswer.Status is not (PromptStatus.OK or PromptStatus.None)) { CommandGuard.Cancelled(ed, "WIFIADDAP"); return; }
+        if (bandAnswer.Status == PromptStatus.OK) settings = settings with { Band = bandAnswer.StringResult == Keyword5 ? Band.Ghz5 : Band.Ghz2_4 };
 
-        var txOptions = new PromptDoubleOptions("\nPotencia de transmisión en dBm")
+        var txOptions = new PromptDoubleOptions("\nPotencia de transmisión en dBm (-10 a 40)")
         {
             DefaultValue = settings.TxPowerDbm,
             UseDefaultValue = true,
         };
         PromptDoubleResult txAnswer = ed.GetDouble(txOptions);
-        if (txAnswer.Status == PromptStatus.OK)
-        {
-            settings = settings with { TxPowerDbm = txAnswer.Value };
-        }
+        if (txAnswer.Status is not (PromptStatus.OK or PromptStatus.None)) { CommandGuard.Cancelled(ed, "WIFIADDAP"); return; }
+        if (txAnswer.Status == PromptStatus.OK) settings = settings with { TxPowerDbm = txAnswer.Value };
 
-        OperationResult<RadioSettings> configured = session.Configure(settings, session.CellSizeM);
-        foreach (string error in configured.Errors)
-        {
-            ed.WriteMessage($"\nWIFIADDAP: {error} Se mantiene el valor anterior.");
-        }
+        OperationResult<SimulationSettings> configured = service.Configure(settings);
+        foreach (string error in configured.Errors) ed.WriteMessage($"\nWIFIADDAP: {error} Se mantiene el valor anterior.");
 
-        using (Transaction tr = db.TransactionManager.StartTransaction())
-        {
-            AccessPointMarker.Draw(db, tr, unit, session.AccessPoint!, session.Settings);
-            tr.Commit();
-        }
+        OperationResult<AccessPointInfo> placed = service.SetAccessPoint(position);
+        CommandOutput.Problems(ed, "WIFIADDAP", placed.Errors, placed.Warnings);
+        if (!placed.Succeeded) return;
 
-        RadioSettings s = session.Settings;
+        AccessPointInfo ap = placed.Value!;
         ed.WriteMessage(string.Create(CultureInfo.GetCultureInfo("es-AR"),
-            $"\nWIFIADDAP: {session.AccessPoint!.Name} en {position} m · Banda {BandInfo.Label(s.Band)} ({s.FrequencyMHz:0} MHz) · P_TX = {s.TxPowerDbm:0.#} dBm.\n"));
-    }
+            $"\nWIFIADDAP: {ap.Name} en {ap.PositionM} m · Banda {BandInfo.Label(ap.Band)} ({ap.FrequencyMHz:0} MHz) · P_TX = {ap.TxPowerDbm:0.#} dBm.\n"));
+    });
 }

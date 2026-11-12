@@ -1,9 +1,6 @@
-using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-using WifiHeat.AutoCAD.Export;
 using WifiHeat.Core.Workflow;
-using CoreApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
 namespace WifiHeat.AutoCAD.Commands;
 
@@ -11,18 +8,17 @@ public sealed class ExportCommands
 {
     /// <summary>Exporta el último cálculo a una imagen PNG.</summary>
     [CommandMethod("WIFIEXPORT")]
-    public void Export()
+    public void Export() => CommandGuard.Run("WIFIEXPORT", doc =>
     {
-        Document doc = CoreApp.DocumentManager.MdiActiveDocument;
         Editor ed = doc.Editor;
-        SimulationSession session = Sessions.For(doc);
-        if (session.LastGrid is null || session.AccessPoint is null)
+        AutoCadWifiHeatService service = Sessions.Service(doc);
+        if (service.Session.LastGrid is null || service.Session.AccessPoint is null)
         {
             ed.WriteMessage("\nWIFIEXPORT: no hay un cálculo vigente. Ejecutar WIFICALCULATE.\n");
             return;
         }
 
-        string suggested = DefaultPath(doc);
+        string suggested = service.DefaultExportPath();
         var options = new PromptStringOptions("\nArchivo PNG")
         {
             AllowSpaces = true,
@@ -30,32 +26,21 @@ public sealed class ExportCommands
             UseDefaultValue = true,
         };
         PromptResult answer = ed.GetString(options);
-        if (answer.Status != PromptStatus.OK) return;
+        if (answer.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIEXPORT"); return; }
 
         string path = string.IsNullOrWhiteSpace(answer.StringResult) ? suggested : answer.StringResult.Trim().Trim('"');
-        if (!Path.HasExtension(path)) path += ".png";
-        path = Path.GetFullPath(path, Path.GetDirectoryName(suggested)!);
-
         try
         {
-            PngComposer.Save(path, session.Walls, session.Heatmap()!, session.AccessPoint, Legend.For(session.Settings), session.OverlayFadePercent);
-            ed.WriteMessage($"\nWIFIEXPORT: imagen guardada en {path}\n");
+            path = Path.GetFullPath(path, Path.GetDirectoryName(suggested)!);
         }
-        catch (System.Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.ExternalException)
+        catch (System.Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            ed.WriteMessage($"\nWIFIEXPORT: no se pudo guardar {path}: {ex.Message}\n");
-        }
-    }
-
-    private static string DefaultPath(Document doc)
-    {
-        bool saved = Convert.ToInt32(CoreApp.GetSystemVariable("DWGTITLED")) != 0;
-        if (saved)
-        {
-            string dwg = doc.Database.Filename;
-            return Path.Combine(Path.GetDirectoryName(dwg)!, Path.GetFileNameWithoutExtension(dwg) + "-wifiheat.png");
+            ed.WriteMessage($"\nWIFIEXPORT: la ruta '{path}' no es válida.\n");
+            return;
         }
 
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "wifiheat.png");
-    }
+        OperationResult<string> result = service.ExportPng(path);
+        CommandOutput.Problems(ed, "WIFIEXPORT", result.Errors, result.Warnings);
+        if (result.Succeeded) ed.WriteMessage($"\nWIFIEXPORT: imagen guardada en {result.Value}\n");
+    });
 }
