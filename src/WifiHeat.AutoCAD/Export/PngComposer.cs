@@ -17,7 +17,7 @@ public static class PngComposer
     private const int LegendWidthPx = 330;
 
     /// <param name="heatmap">La misma imagen que se inserta en el dibujo.</param>
-    public static void Save(string path, IReadOnlyList<Wall> walls, HeatmapImage heatmap, AccessPoint ap, Legend legend)
+    public static void Save(string path, IReadOnlyList<Wall> walls, HeatmapImage heatmap, AccessPoint ap, Legend legend, int fadePercent)
     {
         var heatExtent = new BoundingBox(heatmap.Origin, new Vec2(heatmap.Origin.X + heatmap.WidthM, heatmap.Origin.Y + heatmap.HeightM));
         BoundingBox extent = BoundingBox.FromPoints(
@@ -42,6 +42,7 @@ public static class PngComposer
         using (var attributes = new ImageAttributes())
         {
             attributes.SetWrapMode(WrapMode.TileFlipXY);
+            attributes.SetColorMatrix(new ColorMatrix { Matrix33 = OverlayFade.Alpha(fadePercent) / 255f });
             g.InterpolationMode = InterpolationMode.HighQualityBilinear;
             g.PixelOffsetMode = PixelOffsetMode.Half;
             float left = X(heatExtent.Min.X), top = Y(heatExtent.Max.Y);
@@ -88,7 +89,7 @@ public static class PngComposer
         ly += 12;
         foreach (SignalLevel level in legend.Levels)
         {
-            using var swatch = new SolidBrush(Color.FromArgb(HeatmapRasterizer.DefaultAlpha, level.R, level.G, level.B));
+            using var swatch = new SolidBrush(Color.FromArgb(OverlayFade.Alpha(fadePercent), level.R, level.G, level.B));
             g.FillRectangle(swatch, lx, ly, 40, 24);
             g.DrawRectangle(Pens.Gray, lx, ly, 40, 24);
             g.DrawString(level.Label, textFont, Brushes.Black, lx + 52, ly + 2);

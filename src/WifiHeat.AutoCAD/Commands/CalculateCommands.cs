@@ -15,19 +15,20 @@ namespace WifiHeat.AutoCAD.Commands;
 
 public sealed class CalculateCommands
 {
+    private const string ResolutionKeyword = "Resolucion";
+    private const string FadeKeyword = "Atenuacion";
+    private const string CalculateKeyword = "Calcular";
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-AR");
-    private static readonly IOverlayRenderer Overlay = new RasterOverlayRenderer();
 
     /// <summary>Valida, calcula la grilla y dibuja el mapa de calor y la leyenda.</summary>
     [CommandMethod("WIFICALCULATE")]
-    public void Calculate()
+    public void Calculate() => CommandGuard.Run("WIFICALCULATE", doc =>
     {
-        Document doc = CoreApp.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         Editor ed = doc.Editor;
         SimulationSession session = Sessions.For(doc);
 
-        if (!AskResolution(ed, session)) return;
+        if (!AskOptions(ed, session)) { CommandGuard.Cancelled(ed, "WIFICALCULATE"); return; }
 
         ValidationReport report = ValidateCommands.LoadWalls(doc);
         if (!report.IsValid)
@@ -55,74 +56,92 @@ public sealed class CalculateCommands
         RssiGrid grid = result.Value!;
         var imageWatch = Stopwatch.StartNew();
         HeatmapImage image = session.Heatmap()!;
-        (string imagePath, bool saved) = OverlayImagePath(doc);
+        (string folder, string baseName, bool saved) = OverlayImageLocation(doc);
         OverlayResult overlay;
         using (Transaction tr = db.TransactionManager.StartTransaction())
         {
             DrawingStore.EnsureAll(db, tr);
-            overlay = Overlay.Render(db, tr, unit, image, imagePath);
-            LegendRenderer.Render(db, tr, unit, grid.Spec, Legend.For(session.Settings));
+            overlay = RasterOverlayRenderer.Render(db, tr, unit, image, folder, baseName, session.OverlayFadePercent);
+            LegendRenderer.Render(db, tr, unit, grid.Spec, Legend.For(session.Settings), session.OverlayFadePercent);
             tr.Commit();
         }
 
         imageWatch.Stop();
 
-        foreach (string warning in result.Warnings) ed.WriteMessage($"\n  [AVISO] {warning}");
+        foreach (string warning in result.Warnings.Concat(overlay.Warnings)) ed.WriteMessage($"\n  [AVISO] {warning}");
         if (!saved) ed.WriteMessage("\n  [AVISO] El dibujo no está guardado: la imagen del mapa se guardó en la carpeta temporal. Guardar el dibujo y volver a calcular para dejarla junto al DWG.");
-        if (overlay.ImagePath != imagePath) ed.WriteMessage($"\n  [AVISO] {imagePath} estaba en uso; la imagen se guardó con otro nombre.");
 
         GridSpec spec = grid.Spec;
         ed.WriteMessage(string.Create(Es,
             $"\nWIFICALCULATE: {spec.CellCount} celdas ({spec.Columns} × {spec.Rows}, {spec.CellSizeM:0.##} m) · RSSI mín {grid.Min:0.0} dBm · máx {grid.Max:0.0} dBm · cálculo {watch.Elapsed.TotalMilliseconds:0} ms · {overlay.Entities} entidad(es) de overlay.\n"));
         ed.WriteMessage(string.Create(Es,
-            $"  Imagen: {image.Width} × {image.Height} px de {image.PixelSizeM * 100:0.##} cm · {imageWatch.Elapsed.TotalMilliseconds:0} ms · {overlay.ImagePath}\n"));
+            $"  Imagen: {image.Width} × {image.Height} px de {image.PixelSizeM * 100:0.##} cm · atenuación {session.OverlayFadePercent} % · {imageWatch.Elapsed.TotalMilliseconds:0} ms · {overlay.ImagePath ?? "sin imagen"}\n"));
         ed.WriteMessage(area.Polygon is null
             ? "  Área de cobertura: rectángulo de los muros.\n"
             : $"  Área de cobertura: polilínea {area.Handle} ({grid.ValueCount} celdas con valor).\n");
-    }
+    });
 
-    private const string ResolutionKeyword = "Resolucion";
-    private const string CalculateKeyword = "Calcular";
-
-    /// <summary>Enter calcula con la resolución vigente; la opción Resolución la cambia para esta y las siguientes corridas.</summary>
-    private static bool AskResolution(Editor ed, SimulationSession session)
+    /// <summary>
+    /// Enter calcula con los valores vigentes. Resolución y Atenuación cambian el valor de la sesión y vuelven a preguntar.
+    /// Devuelve false si el usuario cancela.
+    /// </summary>
+    private static bool AskOptions(Editor ed, SimulationSession session)
     {
         while (true)
         {
-            var options = new PromptKeywordOptions(string.Create(Es, $"\nResolución actual {session.CellSizeM:0.00} m. Elegir opción")) { AllowNone = true };
-            options.Keywords.Add(ResolutionKeyword, ResolutionKeyword, "Resolución");
+            var options = new PromptKeywordOptions(string.Create(Es,
+                $"\nResolución {session.CellSizeM:0.00} m · atenuación {session.OverlayFadePercent} %. Elegir opción")) { AllowNone = true };
             options.Keywords.Add(CalculateKeyword);
+            options.Keywords.Add(ResolutionKeyword, ResolutionKeyword, "Resolución");
+            options.Keywords.Add(FadeKeyword, FadeKeyword, "Atenuación");
             options.Keywords.Default = CalculateKeyword;
             PromptResult answer = ed.GetKeywords(options);
             if (answer.Status == PromptStatus.None || (answer.Status == PromptStatus.OK && answer.StringResult == CalculateKeyword)) return true;
             if (answer.Status != PromptStatus.OK) return false;
 
-            var sizeOptions = new PromptDoubleOptions(string.Create(Es, $"\nTamaño de celda en metros ({SimulationSession.MinCellSizeM:0.00} a {SimulationSession.MaxCellSizeM:0})"))
+            if (answer.StringResult == ResolutionKeyword)
             {
-                DefaultValue = session.CellSizeM,
-                UseDefaultValue = true,
-                AllowNegative = false,
-                AllowZero = false,
-            };
-            PromptDoubleResult size = ed.GetDouble(sizeOptions);
-            if (size.Status != PromptStatus.OK) return false;
-
-            OperationResult<double> changed = session.SetResolution(size.Value);
-            if (changed.Succeeded) return true;
-            foreach (string error in changed.Errors) ed.WriteMessage($"\nWIFICALCULATE: {error}");
+                PromptDoubleResult size = ed.GetDouble(new PromptDoubleOptions(string.Create(Es,
+                    $"\nTamaño de celda en metros ({SimulationSession.MinCellSizeM:0.00} a {SimulationSession.MaxCellSizeM:0})"))
+                {
+                    DefaultValue = session.CellSizeM,
+                    UseDefaultValue = true,
+                    AllowNegative = false,
+                    AllowZero = false,
+                });
+                if (size.Status != PromptStatus.OK) return false;
+                Report(ed, session.SetResolution(size.Value).Errors);
+            }
+            else
+            {
+                PromptIntegerResult fade = ed.GetInteger(new PromptIntegerOptions(
+                    $"\nAtenuación del mapa en % ({OverlayFade.MinPercent} = colores plenos, máximo {OverlayFade.MaxPercent})")
+                {
+                    DefaultValue = session.OverlayFadePercent,
+                    UseDefaultValue = true,
+                    AllowNegative = false,
+                });
+                if (fade.Status != PromptStatus.OK) return false;
+                Report(ed, session.SetOverlayFade(fade.Value).Errors);
+            }
         }
     }
 
-    /// <summary>Junto al DWG (&lt;dwg&gt;_wifiheat.png) o, si el dibujo no está guardado, en la carpeta temporal.</summary>
-    private static (string Path, bool NextToDrawing) OverlayImagePath(Document doc)
+    private static void Report(Editor ed, IReadOnlyList<string> errors)
+    {
+        foreach (string error in errors) ed.WriteMessage($"\nWIFICALCULATE: {error}");
+    }
+
+    /// <summary>Junto al DWG o, si el dibujo no está guardado, en la carpeta temporal.</summary>
+    private static (string Folder, string BaseName, bool NextToDrawing) OverlayImageLocation(Document doc)
     {
         bool saved = Convert.ToInt32(CoreApp.GetSystemVariable("DWGTITLED")) != 0;
         if (saved)
         {
             string dwg = doc.Database.Filename;
-            return (Path.Combine(Path.GetDirectoryName(dwg)!, Path.GetFileNameWithoutExtension(dwg) + "_wifiheat.png"), true);
+            return (Path.GetDirectoryName(dwg)!, Path.GetFileNameWithoutExtension(dwg), true);
         }
 
-        return (Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(doc.Name) + "_wifiheat.png"), false);
+        return (Path.GetTempPath(), Path.GetFileNameWithoutExtension(doc.Name), false);
     }
 }

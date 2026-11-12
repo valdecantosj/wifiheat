@@ -38,7 +38,7 @@ public sealed class ExportCommands
 
         try
         {
-            PngComposer.Save(path, session.Walls, session.Heatmap()!, session.AccessPoint, Legend.For(session.Settings));
+            PngComposer.Save(path, session.Walls, session.Heatmap()!, session.AccessPoint, Legend.For(session.Settings), session.OverlayFadePercent);
             ed.WriteMessage($"\nWIFIEXPORT: imagen guardada en {path}\n");
         }
         catch (System.Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.ExternalException)

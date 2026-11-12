@@ -24,6 +24,16 @@ public sealed class SimulationSession(MaterialCatalog catalog)
 
     public double CellSizeM { get; private set; } = DefaultCellSizeM;
 
+    /// <summary>Atenuación del mapa en el dibujo y en la exportación, en %. No cambia el cálculo.</summary>
+    public int OverlayFadePercent { get; private set; } = OverlayFade.DefaultPercent;
+
+    public OperationResult<int> SetOverlayFade(int percent)
+    {
+        if (OverlayFade.Error(percent) is { } error) return OperationResult<int>.Fail(error);
+        OverlayFadePercent = percent;
+        return OperationResult<int>.Ok(percent);
+    }
+
     public IReadOnlyList<Wall> Walls { get; private set; } = [];
 
     public ValidationReport? Validation { get; private set; }

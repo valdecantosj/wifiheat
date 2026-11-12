@@ -22,8 +22,8 @@ public sealed record HeatmapImage(Vec2 Origin, double PixelSizeM, int Width, int
 /// <summary>Convierte la grilla en una imagen continua: interpolación bilineal, rampa de color y recorte al área.</summary>
 public static class HeatmapRasterizer
 {
-    /// <summary>Opacidad dentro del área: 60 %.</summary>
-    public const byte DefaultAlpha = 153;
+    /// <summary>Dentro del área el píxel es opaco; la atenuación la aplica quien muestra la imagen (ver <see cref="OverlayFade"/>).</summary>
+    public const byte OpaqueAlpha = 255;
 
     /// <summary>Lado mayor deseado en píxeles, para que el degradé se vea continuo en pantalla.</summary>
     public const int TargetLongSidePx = 1600;
@@ -38,7 +38,7 @@ public static class HeatmapRasterizer
         return pixels > MaxPixels ? Math.Sqrt(extent.Width * extent.Height / MaxPixels) : size;
     }
 
-    public static HeatmapImage Render(RssiGrid grid, byte alpha = DefaultAlpha) =>
+    public static HeatmapImage Render(RssiGrid grid, byte alpha = OpaqueAlpha) =>
         Render(grid, PixelSizeFor(grid.Spec, grid.Area.Bounds), alpha);
 
     public static HeatmapImage Render(RssiGrid grid, double pixelSizeM, byte alpha)

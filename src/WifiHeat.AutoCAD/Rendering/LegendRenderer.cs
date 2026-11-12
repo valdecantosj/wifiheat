@@ -9,7 +9,7 @@ namespace WifiHeat.AutoCAD.Rendering;
 /// <summary>Leyenda a la derecha del mapa: título, parámetros y un rectángulo de color por rango.</summary>
 public static class LegendRenderer
 {
-    public static void Render(Database db, Transaction tr, DrawingUnit unit, GridSpec spec, Legend legend)
+    public static void Render(Database db, Transaction tr, DrawingUnit unit, GridSpec spec, Legend legend, int fadePercent)
     {
         ModelSpace.EraseLayer(db, tr, WifiHeatNames.LegendLayer);
         BlockTableRecord modelSpace = ModelSpace.Open(db, tr, OpenMode.ForWrite);
@@ -32,7 +32,7 @@ public static class LegendRenderer
             {
                 Layer = WifiHeatNames.LegendLayer,
                 Color = Color.FromRgb(level.R, level.G, level.B),
-                Transparency = new Autodesk.AutoCAD.Colors.Transparency(HeatmapRasterizer.DefaultAlpha),
+                Transparency = new Autodesk.AutoCAD.Colors.Transparency(OverlayFade.Alpha(fadePercent)),
             };
             ModelSpace.Add(modelSpace, tr, swatch);
             AddText(level.Label, 0.45, 1.6 * row);
