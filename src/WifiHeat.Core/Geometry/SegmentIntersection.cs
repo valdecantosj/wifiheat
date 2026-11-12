@@ -4,7 +4,7 @@ namespace WifiHeat.Core.Geometry;
 /// Intersección entre el trayecto AP–punto y un segmento de muro.
 /// Dos segmentos se cruzan si comparten al menos un punto.
 /// Eso incluye cruces propios, toques en un extremo o vértice y superposición colineal.
-/// El conteo por muro (no por segmento) evita duplicar la pérdida en vértices compartidos.
+/// El conteo por muro y por punto de contacto está en PathCrossings.
 /// </summary>
 public static class SegmentIntersection
 {

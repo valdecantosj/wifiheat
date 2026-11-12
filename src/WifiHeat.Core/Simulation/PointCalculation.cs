@@ -3,7 +3,8 @@ using WifiHeat.Core.Propagation;
 
 namespace WifiHeat.Core.Simulation;
 
-public sealed record WallCrossing(string WallId, string MaterialId, string MaterialName, double LossDb);
+/// <summary>Muro contado en el trayecto. JunctionWith: muros tocados en el mismo punto, cuya pérdida no se suma.</summary>
+public sealed record WallCrossing(string WallId, string MaterialId, string MaterialName, double LossDb, IReadOnlyList<string> JunctionWith);
 
 /// <summary>Resultado explicable del cálculo en un punto.</summary>
 public sealed record PointCalculation(

@@ -3,7 +3,7 @@ using WifiHeat.Core.Propagation;
 
 namespace WifiHeat.Core.Simulation;
 
-/// <summary>RSSI estimado en un punto: L_0 más los muros cruzados por el trayecto directo AP–punto.</summary>
+/// <summary>RSSI estimado en un punto: L_0 más los muros cruzados por el trayecto directo AP–punto (regla de <see cref="PathCrossings"/>).</summary>
 public static class PointCalculator
 {
     public static PointCalculation Calculate(SimulationScene scene, AccessPoint ap, RadioSettings settings, Vec2 point)
@@ -15,14 +15,11 @@ public static class PointCalculator
 
         var crossings = new List<WallCrossing>();
         double wallLoss = 0;
-        foreach (ResolvedWall rw in scene.Walls)
+        foreach (CrossingGroup group in PathCrossings.Find(scene, path, settings.Band))
         {
-            if (rw.Wall.IsCrossedBy(path))
-            {
-                double loss = rw.Material.LossDb(settings.Band);
-                crossings.Add(new WallCrossing(rw.Wall.Id, rw.Material.Id, rw.Material.Name, loss));
-                wallLoss += loss;
-            }
+            ResolvedWall rw = group.Counted;
+            crossings.Add(new WallCrossing(rw.Wall.Id, rw.Material.Id, rw.Material.Name, group.LossDb, [.. group.Others.Select(o => o.Wall.Id)]));
+            wallLoss += group.LossDb;
         }
 
         double rx = LinkBudget.ReceivedPowerDbm(settings, pathLoss, wallLoss);
@@ -34,15 +31,6 @@ public static class PointCalculator
     {
         var path = new Segment2(ap.Position, point);
         double pathLoss = PathLoss.FreeSpaceDbFromMetres(settings.FrequencyMHz, path.Length);
-        double wallLoss = 0;
-        foreach (ResolvedWall rw in scene.Walls)
-        {
-            if (rw.Wall.IsCrossedBy(path))
-            {
-                wallLoss += rw.Material.LossDb(settings.Band);
-            }
-        }
-
-        return LinkBudget.ReceivedPowerDbm(settings, pathLoss, wallLoss);
+        return LinkBudget.ReceivedPowerDbm(settings, pathLoss, PathCrossings.TotalLossDb(scene, path, settings.Band));
     }
 }

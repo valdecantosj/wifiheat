@@ -22,7 +22,10 @@ public static class Explanation
         sb.AppendLine(F($"Muros cruzados: {c.Walls.Count}"));
         foreach (WallCrossing w in c.Walls)
         {
-            sb.AppendLine(F($"  - Muro {w.WallId} · {w.MaterialName}: {w.LossDb:0.0} dB"));
+            string junction = w.JunctionWith.Count == 0
+                ? ""
+                : $" (unión con {string.Join(", ", w.JunctionWith)}: se cuenta una vez la pérdida mayor)";
+            sb.AppendLine(F($"  - Muro {w.WallId} · {w.MaterialName}: {w.LossDb:0.0} dB{junction}"));
         }
 
         sb.AppendLine(F($"L_materiales = {c.WallLossDb:0.00} dB"));
