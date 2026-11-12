@@ -8,6 +8,8 @@ namespace WifiHeat.Core.Workflow;
 public static class SceneValidator
 {
     public const double MinSegmentLengthM = 0.001;
+    public const double MinPlausibleExtentM = 2;
+    public const double MaxPlausibleExtentM = 500;
 
     public static ValidationReport Validate(IReadOnlyList<Wall> walls, MaterialCatalog catalog, IEnumerable<ValidationIssue>? hostIssues = null)
     {
@@ -50,6 +52,22 @@ public static class SceneValidator
             }
         }
 
+        if (ScaleIssue(walls) is { } scale) issues.Add(scale);
+
         return new ValidationReport(issues);
+    }
+
+    /// <summary>Aviso si la envolvente de los muros no tiene un tamaño verosímil para un edificio.</summary>
+    public static ValidationIssue? ScaleIssue(IReadOnlyList<Wall> walls)
+    {
+        var points = walls.SelectMany(w => w.Segments).SelectMany(s => new[] { s.A, s.B }).ToList();
+        if (points.Count == 0) return null;
+
+        BoundingBox bounds = BoundingBox.FromPoints(points);
+        double extent = Math.Max(bounds.Width, bounds.Height);
+        if (extent >= MinPlausibleExtentM && extent <= MaxPlausibleExtentM) return null;
+
+        return new(IssueSeverity.Warning, ValidationIssue.SuspiciousScale, null,
+            FormattableString.Invariant($"La envolvente de los muros mide {bounds.Width:0.###} × {bounds.Height:0.###} m. Revisar la unidad del dibujo (WIFISETUP)."));
     }
 }

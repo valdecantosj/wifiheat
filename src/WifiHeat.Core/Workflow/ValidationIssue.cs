@@ -17,6 +17,7 @@ public sealed record ValidationIssue(IssueSeverity Severity, string Code, string
     public const string NoWalls = "SIN MUROS";
     public const string Units = "UNIDADES";
     public const string LargeArea = "AREA GRANDE";
+    public const string SuspiciousScale = "ESCALA SOSPECHOSA";
 
     public override string ToString() =>
         $"[{(Severity == IssueSeverity.Error ? "ERROR" : "AVISO")}] {Code}{(EntityRef is null ? "" : $" ({EntityRef})")}: {Message}";

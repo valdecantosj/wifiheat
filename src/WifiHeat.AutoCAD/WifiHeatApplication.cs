@@ -12,11 +12,13 @@ public sealed class WifiHeatApplication : IExtensionApplication
 
     public void Initialize()
     {
+        Sessions.Attach();
         CoreApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
             $"\nWifiHeat {Version} cargado. Escriba WIFI para ver los comandos.\n");
     }
 
     public void Terminate()
     {
+        Sessions.Detach();
     }
 }
