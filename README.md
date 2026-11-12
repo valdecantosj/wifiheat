@@ -38,11 +38,11 @@ Cada muro se dibuja como un eje (una línea o polilínea de tramos rectos por mu
 
 ## Probar con el ejemplo
 
-`samples/demo.dwg` es una casa sintética de 12 × 8 m con tres ambientes: muros exteriores de hormigón (0,20 m), tabiques de placa de yeso (0,10 m) y un punto de acceso en (3; 4) m, todo ya asignado.
+`samples/demo.dwg` es una planta sintética de 30 × 14 m con seis ambientes: muros exteriores de hormigón (0,25 m); muros interiores de ladrillo macizo (0,20 m) en x = 10 m y en y = 7 m desde x = 20 m, de ladrillo hueco (0,15 m) en x = 20 m y de placa de yeso (0,10 m) en y = 7 m entre x = 0 y x = 20 m. El punto de acceso está en (2; 3) m, en 5 GHz con 20 dBm. Todo está ya asignado.
 
 1. Abrir `samples/demo.dwg` en AutoCAD 2027.
 2. Ejecutar `NETLOAD` y elegir `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows\WifiHeat.AutoCAD.dll` (compilar antes con `dotnet build WifiHeat.slnx`).
-3. Ejecutar `SCRIPT` y elegir `samples/demo.scr`. Valida los muros, calcula el mapa, consulta dos puntos —(6; 6) m sin muros de por medio y (10; 2) m con un tabique— y exporta `samples/demo-wifiheat.png`.
+3. Ejecutar `SCRIPT` y elegir `samples/demo.scr`. Valida los muros, calcula el mapa, consulta dos puntos —(8; 5) m, en el mismo ambiente que el AP, y (26; 11) m, detrás de tres muros— y exporta `samples/demo-wifiheat.png`. La imagen del mapa que se inserta en el dibujo queda en `samples/demo_wifiheat.png`.
 
 Notas:
 
