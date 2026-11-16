@@ -18,7 +18,8 @@ public static class PointCalculator
         foreach (CrossingGroup group in PathCrossings.Find(scene, path, settings.Band))
         {
             ResolvedWall rw = group.Counted;
-            crossings.Add(new WallCrossing(rw.Wall.Id, rw.Material.Id, rw.Material.Name, group.LossDb, [.. group.Others.Select(o => o.Wall.Id)]));
+            crossings.Add(new WallCrossing(rw.Wall.Id, rw.Material.Id, rw.Material.Name, group.LossDb, [.. group.Others.Select(o => o.Wall.Id)],
+                rw.Wall.IsColumn ? rw.Wall.Reinforcement : null, rw.AdditionalLossDb));
             wallLoss += group.LossDb;
         }
 

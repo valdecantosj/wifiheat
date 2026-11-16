@@ -81,7 +81,7 @@ public static class ParallelWalls
         if (walls.Count < 2) return [];
 
         FacePairs pairs = FacePairing.Detect(
-            [.. walls.Select(w => new FaceEntity(w.Id, w.Segments))],
+            [.. walls.Where(w => !w.IsColumn).Select(w => new FaceEntity(w.Id, w.Segments))],
             new AxisDetectionOptions { PairWithinSameEntity = false });
         var leftover = new HashSet<string>(pairs.WithLeftover, StringComparer.Ordinal);
         return [.. pairs.Axes.Select(a => new ParallelWallGroup(a.Axis, a.ThicknessM, a.FaceIds, !a.FaceIds.Any(leftover.Contains)))];

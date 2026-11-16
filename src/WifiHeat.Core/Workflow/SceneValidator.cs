@@ -36,7 +36,20 @@ public static class SceneValidator
                     $"El material '{wall.MaterialId}' no existe en el catálogo."));
             }
 
-            if (wall.ThicknessM is null)
+            if (wall.IsColumn)
+            {
+                if (wall.Reinforcement is null || !Enum.IsDefined(wall.Reinforcement.Value))
+                {
+                    issues.Add(new(IssueSeverity.Error, ValidationIssue.MissingProperty, wall.Id, "Falta el nivel de armadura de la columna. Usar WIFIWALL para asignarlo."));
+                }
+
+                if (wall.Footprint() is null)
+                {
+                    issues.Add(new(IssueSeverity.Error, ValidationIssue.InvalidGeometry, wall.Id, "La columna no es una figura cerrada de tramos rectos."));
+                    continue;
+                }
+            }
+            else if (wall.ThicknessM is null)
             {
                 issues.Add(new(IssueSeverity.Error, ValidationIssue.MissingProperty, wall.Id, "Falta el espesor. Usar WIFIWALL para asignarlo."));
             }

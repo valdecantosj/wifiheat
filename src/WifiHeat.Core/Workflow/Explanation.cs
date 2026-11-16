@@ -19,13 +19,15 @@ public static class Explanation
         sb.AppendLine(F($"P_TX = {s.TxPowerDbm:0.#} dBm · L_cable,TX = {s.TxCableLossDb:0.#} dB · G_antena,TX = {s.TxAntennaGainDbi:0.#} dBi · G_antena,RX = {s.RxAntennaGainDbi:0.#} dBi · L_cable,RX = {s.RxCableLossDb:0.#} dB"));
         sb.AppendLine(F($"d = {c.DistanceM:0.00} m{(c.EffectiveDistanceM > c.DistanceM ? F($" (se usa el mínimo de {c.EffectiveDistanceM:0.##} m)") : "")}"));
         sb.AppendLine(F($"L_0 = {c.PathLossDb:0.00} dB"));
-        sb.AppendLine(F($"Muros cruzados: {c.Walls.Count}"));
+        sb.AppendLine(F($"{(c.Walls.Any(w => w.IsColumn) ? "Muros y columnas cruzados" : "Muros cruzados")}: {c.Walls.Count}"));
         foreach (WallCrossing w in c.Walls)
         {
             string junction = w.JunctionWith.Count == 0
                 ? ""
                 : $" (unión con {string.Join(", ", w.JunctionWith)}: se cuenta una vez la pérdida mayor)";
-            sb.AppendLine(F($"  - Muro {w.WallId} · {w.MaterialName}: {w.LossDb:0.0} dB{junction}"));
+            sb.AppendLine(w.Reinforcement is { } armour
+                ? F($"  - Columna {w.WallId} · {w.MaterialName} con armadura {ReinforcementName(armour)}: {w.LossDb:0.0} dB ({w.LossDb - w.ReinforcementLossDb:0.0} + {w.ReinforcementLossDb:0.0} de armadura){junction}")
+                : F($"  - Muro {w.WallId} · {w.MaterialName}: {w.LossDb:0.0} dB{junction}"));
         }
 
         sb.AppendLine(F($"L_materiales = {c.WallLossDb:0.00} dB"));
@@ -34,6 +36,9 @@ public static class Explanation
         sb.Append("Estimación del modelo; no es una medición.");
         return sb.ToString();
     }
+
+    public static string ReinforcementName(Reinforcement level) =>
+        ColumnReinforcement.Default.Get(level).Name.ToLower(Es);
 
     private static string F(FormattableString text) => text.ToString(Es);
 }

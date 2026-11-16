@@ -114,6 +114,7 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         if (Validation is null) return OperationResult<RssiGrid>.Fail("Primero validar el plano (WIFIVALIDATE).");
         if (_scene is null) return OperationResult<RssiGrid>.Fail($"El plano tiene {Validation.ErrorCount} error(es) de validación. Corregirlos y validar de nuevo.");
         if (AccessPoint is null) return OperationResult<RssiGrid>.Fail("Falta ubicar el AP (WIFIADDAP).");
+        if (AccessPointInsideColumn() is { } inside) return OperationResult<RssiGrid>.Fail(inside);
 
         Polygon2 area;
         if (CoverageArea is not null)
@@ -156,6 +157,19 @@ public sealed class SimulationSession(MaterialCatalog catalog)
     {
         if (_scene is null) return OperationResult<PointCalculation>.Fail("El plano no está validado sin errores.");
         if (AccessPoint is null) return OperationResult<PointCalculation>.Fail("Falta ubicar el AP (WIFIADDAP).");
+        if (AccessPointInsideColumn() is { } inside) return OperationResult<PointCalculation>.Fail(inside);
+        if (_scene.ColumnContaining(point) is { } column)
+        {
+            return OperationResult<PointCalculation>.Fail(
+                $"El punto consultado está dentro de la columna {column.Wall.Id}: ahí no hay señal que estimar. Elegir un punto fuera de la columna.");
+        }
+
         return OperationResult<PointCalculation>.Ok(PointCalculator.Calculate(_scene, AccessPoint, Settings, point));
     }
+
+    /// <summary>Mensaje si el AP está dentro de una columna (o sobre su borde); null si no.</summary>
+    private string? AccessPointInsideColumn() =>
+        AccessPoint is not null && _scene?.ColumnContaining(AccessPoint.Position) is { } column
+            ? $"El AP está dentro de la columna {column.Wall.Id}: no se calcula. Ubicarlo fuera de la columna."
+            : null;
 }
