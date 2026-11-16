@@ -30,6 +30,36 @@ Reglas de conteo:
 - Cada muro cuenta a lo sumo una vez, aunque el trayecto lo toque en un vértice o en varios de sus tramos.
 - Si el trayecto toca varios muros en el mismo punto (con una tolerancia de 1 mm), como en una unión en T, un cruce o una esquina formada por dos muros, ese punto aporta una sola vez la pérdida mayor de esos muros. Lo mismo vale para dos muros superpuestos.
 - Los muros que el trayecto toca en puntos distintos se suman.
+- Una línea o una polilínea es un solo obstáculo. Para separar muros hay que usar entidades distintas.
+- Un muro dibujado con sus dos caras son dos entidades y sumaría dos veces. Por eso las caras se reemplazan por un eje a mitad de distancia, y la validación avisa (`DOBLE CONTEO`) si quedan dos muros paralelos a menos de 0,50 m.
+
+## Columnas de hormigón armado
+
+$$L_{columna}\,[\mathrm{dB}] = L_{hormigón}(\text{banda}) + \Delta_{armadura}$$
+
+| Símbolo | Significado | Unidad |
+| --- | --- | --- |
+| $L_{columna}$ | Pérdida de una columna cruzada por el trayecto | dB |
+| $L_{hormigón}$ | Pérdida del hormigón según la banda, de `config/materials.json` | dB |
+| $\Delta_{armadura}$ | Adicional por nivel de armadura, igual en las dos bandas | dB |
+
+| Armadura | Ejemplo en una columna de 30 × 30 cm | Cuantía | $\Delta_{armadura}$ |
+| --- | --- | --- | --- |
+| Baja | 4 barras Ø20 | ≈ 1,4 % | 2,5 dB |
+| Media | 8 barras Ø20 | ≈ 2,8 % | 5 dB |
+| Alta | 12 barras Ø20 | ≈ 4,2 % | 7,5 dB |
+
+Por qué: el acero de la armadura refleja y dispersa parte de la señal, además de lo que atenúa el hormigón.
+
+Los adicionales son una convención de este proyecto, no un dato publicado: no hay una tabla que relacione la cuantía de acero con decibeles. Su orden de magnitud sale de comparar las tablas de hormigón sin armar (22,8 / 44,8 dB en iBwave) con las de hormigón armado (25–30 dB o más / 50 dB o más en Interline), que difieren en unos 5 dB. Las cuantías son un cálculo geométrico: área de las barras sobre el área de la columna.
+
+Reglas de conteo:
+
+- La columna es un contorno cerrado y cuenta una sola vez por trayecto, aunque este corte dos de sus lados o roce una esquina.
+- Si la columna toca un muro en el punto donde pasa el trayecto (tolerancia de 1 mm), vale la regla de las uniones: se cuenta una vez la pérdida mayor.
+- Si el AP o el punto consultado están dentro de una columna, no se calcula y se avisa.
+
+Límites: el modelo solo considera el trayecto directo, sin difracción ni rebotes, así que detrás de la columna aparece una sombra en cuña que en la realidad se rellena en parte. La armadura real (barras y estribos separados 10 a 20 cm, frente a una longitud de onda de unos 12 cm en 2,4 GHz y 6 cm en 5 GHz) no es una malla cerrada. La altura no interviene: el plano es 2D.
 
 ## Balance de enlace
 
@@ -78,4 +108,7 @@ Así, el color puro aparece en el centro de cada intervalo y en los límites se 
 4. T. S. Rappaport, *Wireless Communications: Principles and Practice*, 2.ª ed., Prentice Hall, 2002. Modelo de espacio libre (sec. 4.2) y pérdidas por tabiques en interiores (sec. 4.11.1).
 5. ITU-R, Recomendación P.2040-4 (09/2025), *Effects of building materials and structures on radiowave propagation in the range of 1 MHz to 450 GHz*. Efecto de los materiales de construcción.
 
-Los valores de cada material y sus fuentes están en `config/materials.json`.
+6. iBwave, *A closer look at attenuation across materials & the 2.4 GHz & 5 GHz bands* (2018). Pérdida por material: «Concrete – Heavy» 22,792 / 44,769 dB. https://blog.ibwave.com/a-closer-look-at-attenuation-across-materials-the-2-4ghz-5ghz-bands/
+7. Interline, *Building Materials and Wi-Fi Signal Loss (2.4 GHz and 5 GHz)*. «Reinforced concrete»: 25–30 dB o más / 50 dB o más. https://interline.pl/Information-and-Tips/Building-Materials-and-Wi-Fi-Signal-Loss-2.4-GHz-and-5-GHz
+
+Los valores de cada material, los adicionales de armadura y sus fuentes están en `config/materials.json`.
