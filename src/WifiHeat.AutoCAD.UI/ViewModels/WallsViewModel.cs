@@ -351,19 +351,58 @@ public sealed class WallsViewModel : ObservableObject
 
         _owner.Run(() =>
         {
-            OperationResult<int> result = _owner.Service.AssignMaterial(handles, material.Id, thickness);
-            List<string> added = _extraSelection;
-            if (result.Succeeded) _extraSelection = [];
-            _owner.Reload();
-            if (result.Succeeded)
+            FacePairSurvey pairs = _owner.Service.FindFacePairs(handles);
+            if (!pairs.HasPairs)
             {
-                foreach (WallRowViewModel row in _rows.Where(r => added.Contains(r.Handle, StringComparer.OrdinalIgnoreCase))) row.SetSelected(true);
-                OnSelectionChanged();
+                AssignSelection(handles, material, thickness, joinFaces: false);
+                return;
             }
 
-            string thicknessText = thickness is { } t ? $"espesor {NumberText.Format(t, "0.###")} m" : "espesor conservado";
-            _owner.Report(result, "No se pudo asignar el material", $"{result.Value} muro(s) con {material.Name}", $"{char.ToUpper(thicknessText[0])}{thicknessText[1..]}.");
+            _owner.Report(StatusKind.Warning,
+                pairs.PairCount == 1 ? "La selección tiene 1 par de caras de un mismo muro" : $"La selección tiene {pairs.PairCount} pares de caras de un mismo muro",
+                "Asignadas por separado, la pérdida se suma dos veces. «Unir en ejes» crea un eje por muro con el espesor medido y deja las caras en su capa.",
+                new MessageAction("Unir en ejes", new RelayCommand(() => _owner.Run(() => AssignSelection(handles, material, thickness, joinFaces: true)))),
+                new MessageAction("Ignorar", new RelayCommand(() => _owner.Run(() => AssignSelection(handles, material, thickness, joinFaces: false)))));
         });
+    }
+
+    private void AssignSelection(string[] handles, MaterialOption material, double? thickness, bool joinFaces)
+    {
+        string thicknessText = thickness is { } t ? $"Espesor {NumberText.Format(t, "0.###")} m." : "Espesor conservado.";
+        List<string> added = _extraSelection;
+        if (joinFaces)
+        {
+            OperationResult<FaceJoin> joined = _owner.Service.AssignMaterialJoiningFaces(handles, material.Id, thickness);
+            if (joined.Succeeded) _extraSelection = [];
+            _owner.Reload();
+            if (!joined.Succeeded)
+            {
+                _owner.Report(joined, "No se pudo asignar el material", "");
+                return;
+            }
+
+            FaceJoin j = joined.Value!;
+            Select([.. added, .. j.AxisHandles]);
+            string range = j.MinThicknessM == j.MaxThicknessM
+                ? NumberText.Format(j.MinThicknessM, "0.###")
+                : $"{NumberText.Format(j.MinThicknessM, "0.###")} a {NumberText.Format(j.MaxThicknessM, "0.###")}";
+            _owner.Report(joined, "No se pudo asignar el material",
+                $"{j.AxisCount} eje(s) y {j.SingleWalls} muro(s) sin par con {material.Name}",
+                $"Ejes a partir de {j.FaceCount} cara(s), que siguen en su capa. Espesor medido: {range} m.");
+            return;
+        }
+
+        OperationResult<int> result = _owner.Service.AssignMaterial(handles, material.Id, thickness);
+        if (result.Succeeded) _extraSelection = [];
+        _owner.Reload();
+        if (result.Succeeded) Select(added);
+        _owner.Report(result, "No se pudo asignar el material", $"{result.Value} muro(s) con {material.Name}", thicknessText);
+    }
+
+    private void Select(IReadOnlyCollection<string> handles)
+    {
+        foreach (WallRowViewModel row in _rows.Where(r => handles.Contains(r.Handle, StringComparer.OrdinalIgnoreCase))) row.SetSelected(true);
+        OnSelectionChanged();
     }
 
     internal MaterialOption? Option(string? materialId) =>

@@ -184,7 +184,8 @@ public sealed class PanelViewModel : ObservableObject
         }
     }
 
-    internal void Report(StatusKind kind, string title, string detail = "") => Messages.Post(kind, title, detail);
+    internal void Report(StatusKind kind, string title, string detail = "", params MessageAction[] actions) =>
+        Messages.Post(kind, title, detail, actions);
 
     /// <summary>
     /// Error con los motivos o, si salió bien, éxito; con avisos queda como advertencia con el mismo título.

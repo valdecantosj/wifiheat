@@ -10,9 +10,16 @@ public enum StatusKind
     Error,
 }
 
-/// <summary>Resultado de una acción del panel: título corto y detalle opcional.</summary>
+/// <summary>Acción que ofrece un mensaje: un botón dentro de la franja, mientras el mensaje sigue a la vista.</summary>
+public sealed record MessageAction(string Label, RelayCommand Command);
+
+/// <summary>Resultado de una acción del panel: título corto, detalle opcional y acciones sugeridas.</summary>
 public sealed record PanelMessage(DateTime Time, StatusKind Kind, string Title, string Detail)
 {
+    public IReadOnlyList<MessageAction> Actions { get; init; } = [];
+
+    public bool HasActions => Actions.Count > 0;
+
     public string Icon => Kind switch
     {
         StatusKind.Error => "✖",
@@ -90,9 +97,9 @@ public sealed class MessageCenter : ObservableObject
 
     public RelayCommand ClearHistoryCommand { get; }
 
-    public void Post(StatusKind kind, string title, string detail = "")
+    public void Post(StatusKind kind, string title, string detail = "", IReadOnlyList<MessageAction>? actions = null)
     {
-        var message = new PanelMessage(_clock(), kind, title.Trim(), detail.Trim());
+        var message = new PanelMessage(_clock(), kind, title.Trim(), detail.Trim()) { Actions = actions ?? [] };
         History.Insert(0, message);
         while (History.Count > HistoryLimit) History.RemoveAt(History.Count - 1);
         OnHistoryChanged();

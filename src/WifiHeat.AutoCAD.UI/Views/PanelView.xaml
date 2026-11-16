@@ -216,6 +216,15 @@
               </ListBox>
               <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" Text="Elegir un problema para seleccionar la entidad y encuadrarla en el dibujo."
                          Visibility="{Binding HasItems, Converter={StaticResource Visible}}" />
+              <Border Margin="0,8,0,0" Padding="8,6,8,8" BorderThickness="3,0,0,0" Background="{DynamicResource Message.Warning.Background}"
+                      BorderBrush="{DynamicResource Message.Warning.Accent}"
+                      Visibility="{Binding HasDoubleCount, Converter={StaticResource Visible}}">
+                <StackPanel>
+                  <TextBlock TextWrapping="Wrap" Text="{Binding DoubleCountText}" />
+                  <Button Margin="0,6,0,0" HorizontalAlignment="Left" Content="_Convertir en ejes" Command="{Binding ConvertParallelCommand}"
+                          ToolTip="Crea un eje por muro con el material de las caras y pasa las caras a la capa WIFIHEAT_CARAS, que no se lee como muro." />
+                </StackPanel>
+              </Border>
             </StackPanel>
           </Expander>
 
@@ -675,6 +684,19 @@
                 <TextBlock Text="{Binding Title}" FontWeight="Bold" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Margin="0,1,0,0"
                            Visibility="{Binding HasDetail, Converter={StaticResource Visible}}" />
+                <ItemsControl ItemsSource="{Binding Actions}" Focusable="False" Margin="0,6,0,0"
+                              Visibility="{Binding HasActions, Converter={StaticResource Visible}}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Content="{Binding Label}" Command="{Binding Command}" Margin="0,0,6,2" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
               </StackPanel>
             </DockPanel>
           </Border>
