@@ -34,6 +34,14 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
     public string? AreaHandle { get; private set; }
     public List<(AccessPoint Ap, RadioSettings Settings)> SavedAccessPoints { get; } = [];
     public int Draws { get; private set; }
+
+    public List<OverlayImageKind> DrawnKinds { get; } = [];
+
+    public Legend? LastDrawnLegend { get; private set; }
+
+    public HeatmapImage? LastDrawnImage { get; private set; }
+
+    public Legend? LastFadeLegend { get; private set; }
     public List<int> FadesApplied { get; } = [];
     public int LegendRedraws { get; private set; }
     public List<string> Exported { get; } = [];
@@ -223,15 +231,19 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
         return null;
     }
 
-    protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent)
+    protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent, OverlayImageKind kind)
     {
         Draws++;
+        DrawnKinds.Add(kind);
+        LastDrawnLegend = legend;
+        LastDrawnImage = image;
         return new OverlayOutcome($"overlay_{Draws:000}.png", []);
     }
 
     protected override string? ApplyOverlayFade(int percent, RssiGrid? grid, Legend legend)
     {
         FadesApplied.Add(percent);
+        LastFadeLegend = legend;
         if (grid is not null) LegendRedraws++;
         return null;
     }

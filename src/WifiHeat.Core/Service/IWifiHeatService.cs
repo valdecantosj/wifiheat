@@ -95,6 +95,13 @@ public interface IWifiHeatService
 
     OperationResult<CalculationSummary> Calculate();
 
+    /// <summary>
+    /// Reemplaza el mapa del dibujo por la pérdida en dB que agrega la armadura de las columnas (diferencia con el cálculo
+    /// que las toma como hormigón sin armadura). No cambia el cálculo ni la configuración: la resolución es la de la sesión o 0,20 m, la menor.
+    /// Volver al mapa de cobertura es ejecutar <see cref="Calculate"/>.
+    /// </summary>
+    OperationResult<ReinforcementEffectSummary> ShowReinforcementEffect();
+
     /// <summary>Cambia la atenuación del mapa ya dibujado, sin recalcular.</summary>
     OperationResult<int> SetOverlayFade(int percent);
 

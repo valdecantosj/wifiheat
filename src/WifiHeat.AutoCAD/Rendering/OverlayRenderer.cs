@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using WifiHeat.AutoCAD.Export;
 using WifiHeat.Core.Geometry;
+using WifiHeat.Core.Service;
 using WifiHeat.Core.Simulation;
 
 namespace WifiHeat.AutoCAD.Rendering;
@@ -13,7 +14,8 @@ public sealed record OverlayResult(int Entities, string? ImagePath, IReadOnlyLis
 /// <summary>
 /// Mapa de calor como imagen ráster: un PNG opaco dentro del área y transparente fuera, referenciado desde el dibujo,
 /// atenuado con la propiedad Fade de la imagen y al fondo del orden de dibujo.
-/// Cada cálculo escribe un archivo nuevo (&lt;base&gt;_wifiheat_NNN.png) y borra los anteriores si no están bloqueados.
+/// Cada cálculo escribe un archivo nuevo (&lt;base&gt;_wifiheat_NNN.png, o &lt;base&gt;_wifiarmadura_NNN.png para el efecto de la armadura)
+/// y borra los anteriores de los dos tipos si no están bloqueados.
 /// </summary>
 public static class RasterOverlayRenderer
 {
@@ -21,10 +23,11 @@ public static class RasterOverlayRenderer
     private const short NeutralBrightness = 50;
     private const short NeutralContrast = 50;
 
-    public static OverlayResult Render(Database db, Transaction tr, DrawingUnit unit, HeatmapImage image, string folder, string baseName, int fadePercent)
+    public static OverlayResult Render(Database db, Transaction tr, DrawingUnit unit, HeatmapImage image, string folder, string baseName, int fadePercent,
+        OverlayImageKind kind = OverlayImageKind.Coverage)
     {
         var warnings = new List<string>();
-        string path = NextPath(folder, baseName);
+        string path = NextPath(folder, baseName, kind);
         try
         {
             HeatmapBitmap.Save(image, path);
@@ -105,31 +108,38 @@ public static class RasterOverlayRenderer
         return changed;
     }
 
-    /// <summary>Siguiente número libre: uno más que el mayor existente.</summary>
-    public static string NextPath(string folder, string baseName)
+    /// <summary>Nombre del archivo según lo que muestra: <c>wifiheat</c> (cobertura) o <c>wifiarmadura</c> (efecto de la armadura).</summary>
+    public static string Suffix(OverlayImageKind kind) => kind == OverlayImageKind.ReinforcementEffect ? "wifiarmadura" : "wifiheat";
+
+    /// <summary>Siguiente número libre del mismo tipo de imagen: uno más que el mayor existente.</summary>
+    public static string NextPath(string folder, string baseName, OverlayImageKind kind = OverlayImageKind.Coverage)
     {
+        string suffix = Suffix(kind);
         int next = 1;
         if (Directory.Exists(folder))
         {
-            foreach (string file in Directory.EnumerateFiles(folder, $"{baseName}_wifiheat_*.png"))
+            foreach (string file in Directory.EnumerateFiles(folder, $"{baseName}_{suffix}_*.png"))
             {
-                Match m = Numbered(baseName).Match(Path.GetFileName(file));
+                Match m = Numbered(baseName, suffix).Match(Path.GetFileName(file));
                 if (m.Success && int.TryParse(m.Groups[1].Value, out int n)) next = Math.Max(next, n + 1);
             }
         }
 
-        return Path.Combine(folder, $"{baseName}_wifiheat_{next:000}.png");
+        return Path.Combine(folder, $"{baseName}_{suffix}_{next:000}.png");
     }
 
-    private static Regex Numbered(string baseName) =>
-        new($"^{Regex.Escape(baseName)}_wifiheat(?:_(\\d+))?\\.png$", RegexOptions.IgnoreCase);
+    private static Regex Numbered(string baseName, string suffix) =>
+        new($"^{Regex.Escape(baseName)}_{suffix}(?:_(\\d+))?\\.png$", RegexOptions.IgnoreCase);
+
+    private static Regex AnyImage(string baseName) =>
+        new($"^{Regex.Escape(baseName)}_(?:wifiheat|wifiarmadura)(?:_\\d+)?\\.png$", RegexOptions.IgnoreCase);
 
     /// <summary>Borra las imágenes de cálculos anteriores de este dibujo. Devuelve cuántas no se pudieron borrar.</summary>
     private static int DeleteOlderImages(string folder, string baseName, string keep)
     {
         int locked = 0;
-        Regex pattern = Numbered(baseName);
-        foreach (string file in Directory.EnumerateFiles(folder, $"{baseName}_wifiheat*.png"))
+        Regex pattern = AnyImage(baseName);
+        foreach (string file in Directory.EnumerateFiles(folder, $"{baseName}_wifi*.png"))
         {
             if (!pattern.IsMatch(Path.GetFileName(file))) continue;
             if (string.Equals(Path.GetFullPath(file), Path.GetFullPath(keep), StringComparison.OrdinalIgnoreCase)) continue;

@@ -23,6 +23,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
     private static readonly System.Globalization.CultureInfo Es = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
 
     private DrawingContents _drawingContents = new([], []);
+    private EffectDisplay? _effectShown;
 
     public SimulationSession Session { get; } = session;
 
@@ -469,7 +470,9 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         OperationResult<int> set = Session.SetOverlayFade(percent);
         if (!set.Succeeded) return set;
 
-        string? warning = ApplyOverlayFade(percent, Session.LastGrid, Legend.For(Session.Settings));
+        string? warning = _effectShown is { } effect
+            ? ApplyOverlayFade(percent, effect.Grid, effect.Legend)
+            : ApplyOverlayFade(percent, Session.LastGrid, Legend.For(Session.Settings));
         return OperationResult<int>.Ok(percent, warning is null ? [] : [warning]);
     }
 
@@ -497,7 +500,8 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         RssiGrid grid = result.Value!;
         var imageWatch = Stopwatch.StartNew();
         HeatmapImage image = Session.Heatmap()!;
-        OverlayOutcome overlay = DrawResult(grid, image, Legend.For(Session.Settings), Session.OverlayFadePercent);
+        _effectShown = null;
+        OverlayOutcome overlay = DrawResult(grid, image, Legend.For(Session.Settings), Session.OverlayFadePercent, OverlayImageKind.Coverage);
         imageWatch.Stop();
         warnings.AddRange(overlay.Warnings);
 
@@ -508,6 +512,45 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
             image.Width, image.Height, image.PixelSizeM, Session.OverlayFadePercent, overlay.ImagePath, area.Description, warnings);
         return OperationResult<CalculationSummary>.Ok(LastCalculation, warnings);
     }
+
+    public OperationResult<ReinforcementEffectSummary> ShowReinforcementEffect()
+    {
+        ValidationSummary validation = Validate();
+        if (!validation.IsValid)
+        {
+            return new OperationResult<ReinforcementEffectSummary>(null,
+                [.. validation.Items.Where(i => i.Severity == IssueSeverity.Error).Select(i => i.ToString()),
+                 $"No se calcula: el plano tiene {validation.ErrorCount} error(es) de validación."], []);
+        }
+
+        CoverageAreaRead area = ReadCoverageArea();
+        var warnings = new List<string>();
+        if (area.Warning is not null) warnings.Add(area.Warning);
+
+        OperationResult<ReinforcementEffectResult> result = Session.CalculateReinforcementEffect(area.Polygon);
+        if (!result.Succeeded) return new OperationResult<ReinforcementEffectSummary>(null, result.Errors, warnings);
+        warnings.AddRange(result.Warnings);
+
+        ReinforcementEffectResult r = result.Value!;
+        ReinforcementEffectMap? map = r.Map;
+        if (map is null || !map.HasEffect)
+        {
+            return OperationResult<ReinforcementEffectSummary>.Ok(new ReinforcementEffectSummary(
+                r.ReinforcedColumns, 0, 0, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, null, warnings), warnings);
+        }
+
+        var scale = new EffectScale(map.MaxDb);
+        Legend legend = Legend.ForReinforcementEffect(Session.Settings, scale);
+        HeatmapImage image = HeatmapRasterizer.RenderEffect(map.Grid, scale);
+        OverlayOutcome overlay = DrawResult(map.Grid, image, legend, Session.OverlayFadePercent, OverlayImageKind.ReinforcementEffect);
+        warnings.AddRange(overlay.Warnings);
+        if (overlay.ImagePath is not null) _effectShown = new EffectDisplay(map.Grid, legend);
+
+        return OperationResult<ReinforcementEffectSummary>.Ok(new ReinforcementEffectSummary(
+            r.ReinforcedColumns, map.AffectedCells, map.MaxDb, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, overlay.ImagePath, warnings), warnings);
+    }
+
+    private sealed record EffectDisplay(RssiGrid Grid, Legend Legend);
 
     public OperationResult<QueryResult> Query(Vec2 pointM)
     {
@@ -720,8 +763,8 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
     /// <summary>Dibuja el marcador del AP con su banda y potencia. Devuelve un mensaje si no se pudo.</summary>
     protected abstract string? SaveAccessPoint(AccessPoint ap, RadioSettings settings);
 
-    /// <summary>Reemplaza mapa y leyenda del dibujo.</summary>
-    protected abstract OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent);
+    /// <summary>Reemplaza mapa y leyenda del dibujo. Kind define el nombre del archivo de la imagen.</summary>
+    protected abstract OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent, OverlayImageKind kind);
 
     protected abstract void WritePng(string path, IReadOnlyList<Wall> walls, HeatmapImage image, AccessPoint ap, Legend legend, int fadePercent);
 }

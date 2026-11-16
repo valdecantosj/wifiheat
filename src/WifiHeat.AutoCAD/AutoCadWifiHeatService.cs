@@ -291,7 +291,7 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
         return null;
     }
 
-    protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent)
+    protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent, OverlayImageKind kind)
     {
         using DocumentLock _ = Document.LockDocument();
         DrawingUnit unit = DrawingStore.ReadUnit(Db) ?? DrawingUnit.Metres;
@@ -300,7 +300,7 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
         using (Transaction tr = Db.TransactionManager.StartTransaction())
         {
             DrawingStore.EnsureAll(Db, tr);
-            overlay = RasterOverlayRenderer.Render(Db, tr, unit, image, folder, baseName, fadePercent);
+            overlay = RasterOverlayRenderer.Render(Db, tr, unit, image, folder, baseName, fadePercent, kind);
             LegendRenderer.Render(Db, tr, unit, grid.Spec, legend, fadePercent);
             tr.Commit();
         }
