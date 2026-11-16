@@ -75,6 +75,12 @@ public interface IWifiHeatService
     /// </summary>
     OperationResult<AxisGeneration> GenerateAxes(BoundingBox windowM, IReadOnlyCollection<string> layers, double mergeGapM = AxisDefaults.MergeGapM);
 
+    /// <summary>
+    /// Crea ejes de muro aplicando el mismo detector solo a las líneas y polilíneas elegidas, sin importar su capa.
+    /// No borra nada: si ya hay un eje en ese lugar se conserva. Los muros de simulación elegidos no se usan como caras.
+    /// </summary>
+    OperationResult<AxisGeneration> GenerateAxesFromSelection(IReadOnlyCollection<string> handles, double mergeGapM = AxisDefaults.MergeGapM);
+
     OperationResult<AccessPointInfo> SetAccessPoint(Vec2 positionM);
 
     OperationResult<SimulationSettings> Configure(SimulationSettings settings);

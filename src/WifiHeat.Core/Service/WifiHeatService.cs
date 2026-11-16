@@ -369,6 +369,48 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
             detection.Unpaired, detection.PartlyUnpaired) { SmallClosedFigures = PossibleColumns(ReadClosedFigures(windowM)) });
     }
 
+    public OperationResult<AxisGeneration> GenerateAxesFromSelection(IReadOnlyCollection<string> handles, double mergeGapM = AxisDefaults.MergeGapM)
+    {
+        if (AxisPrecondition(mergeGapM) is { } error) return OperationResult<AxisGeneration>.Fail(error);
+        if (handles.Count == 0) return OperationResult<AxisGeneration>.Fail("No se eligió ninguna línea. No se creó ningún eje.");
+
+        LoadWalls();
+        List<EntityFaces> candidates = [.. ReadEntityFaces(Distinct(handles)).Where(e => !e.IsWall)];
+        List<EntityFaces> faces = [.. candidates.Where(e => ColumnRules.SmallClosedFigure(e.Segments, e.Closed) is null)];
+        if (faces.Count == 0)
+        {
+            return OperationResult<AxisGeneration>.Fail("La selección no tiene líneas ni polilíneas que puedan ser caras de muro. No se creó ningún eje.");
+        }
+
+        FacePairs pairs = FacePairing.Detect(
+            [.. faces.Select(e => new FaceEntity(e.Handle, e.Segments))],
+            new AxisDetectionOptions { MaxMergeGapM = mergeGapM });
+        int segments = faces.Sum(e => e.Segments.Count);
+        string[] small = [.. candidates.Except(faces).Select(e => e.Handle)];
+        List<string> possibleColumns = small.Length == 0 ? [] : PossibleColumns(ReadClosedFigures(small));
+        if (pairs.Axes.Count == 0)
+        {
+            return OperationResult<AxisGeneration>.Ok(
+                new AxisGeneration(segments, 0, 0, 0, 0, 0, 0, mergeGapM, pairs.Single, []) { SmallClosedFigures = possibleColumns },
+                ["No se encontró ningún par de caras paralelas entre las líneas elegidas; el dibujo no se modificó."]);
+        }
+
+        var create = new List<NewAxis>();
+        int kept = 0;
+        foreach (WallAxis axis in pairs.Axes)
+        {
+            if (ExistingAxis(axis.Axis, []) is null) create.Add(new NewAxis(axis.Axis, Math.Round(axis.ThicknessM, 3)));
+            else kept++;
+        }
+
+        if (create.Count > 0) CreateAxes(create);
+        LoadWalls();
+        return OperationResult<AxisGeneration>.Ok(new AxisGeneration(
+            segments, pairs.Axes.Count, create.Count, kept, 0,
+            pairs.Axes.Min(a => a.ThicknessM), pairs.Axes.Max(a => a.ThicknessM), mergeGapM,
+            pairs.Single, pairs.WithLeftover) { SmallClosedFigures = possibleColumns });
+    }
+
     public OperationResult<AccessPointInfo> SetAccessPoint(Vec2 positionM)
     {
         if (!double.IsFinite(positionM.X) || !double.IsFinite(positionM.Y)) return OperationResult<AccessPointInfo>.Fail("La ubicación del AP no es válida.");
