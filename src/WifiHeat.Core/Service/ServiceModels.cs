@@ -202,7 +202,7 @@ public sealed record ReinforcementEffectSummary(
             ? "La armadura no agrega pérdida en el área de cobertura"
             : string.Create(Es, $"Efecto máximo de la armadura: {MaxDb:0.##} dB");
 
-    /// <summary>Detalle del resultado: celdas afectadas, resolución usada y aviso si se bajó la de la sesión.</summary>
+    /// <summary>Detalle del resultado: celdas afectadas y resolución usada.</summary>
     public IReadOnlyList<string> Details
     {
         get
@@ -218,13 +218,8 @@ public sealed record ReinforcementEffectSummary(
             }
             else
             {
-                lines.Add(string.Create(Es, $"{AffectedCells} celda(s) afectada(s) · resolución {CellSizeM:0.##} m"));
+                lines.Add(string.Create(Es, $"{AffectedCells} celda(s) afectada(s) · resolución {CellSizeM:0.##} m."));
                 lines.Add("Es una diferencia en dB, no un nivel de señal. Para volver al mapa de cobertura: WIFICALCULATE.");
-            }
-
-            if (ResolutionLowered && !NothingToShow)
-            {
-                lines.Add(string.Create(Es, $"La resolución de la sesión ({SessionCellSizeM:0.##} m) se bajó a {CellSizeM:0.##} m solo para este mapa; la configuración no cambió."));
             }
 
             return lines;

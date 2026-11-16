@@ -50,7 +50,7 @@ public class ReinforcementEffectServiceTests
         Assert.Equal(0.2, s.CellSizeM, 9);
         Assert.Equal(0.5, s.SessionCellSizeM, 9);
         Assert.Equal(0.5, d.Settings.CellSizeM);
-        Assert.Contains(s.Details, line => line.Contains("0,5") && line.Contains("0,2") && line.Contains("configuración no cambió"));
+        Assert.Contains(s.Warnings, w => w.Contains("0,5") && w.Contains("0,2") && w.Contains("configuración de la sesión no cambió"));
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class ReinforcementEffectServiceTests
 
         Assert.False(s.ResolutionLowered);
         Assert.Equal(0.1, s.CellSizeM, 9);
-        Assert.DoesNotContain(s.Details, line => line.Contains("se bajó"));
+        Assert.DoesNotContain(s.Warnings, w => w.Contains("se bajó"));
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class ReinforcementEffectServiceTests
         Assert.True(result.Value!.NothingToShow);
         Assert.Equal(0, result.Value.ReinforcedColumns);
         Assert.Contains("no hay nada que mostrar", result.Value.Headline);
-        Assert.DoesNotContain(result.Value.Details, line => line.Contains("se bajó"));
+        Assert.DoesNotContain(result.Value.Warnings, w => w.Contains("se bajó"));
         Assert.Equal(0, d.Draws);
     }
 

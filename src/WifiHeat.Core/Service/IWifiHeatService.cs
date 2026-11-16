@@ -102,6 +102,9 @@ public interface IWifiHeatService
     /// </summary>
     OperationResult<ReinforcementEffectSummary> ShowReinforcementEffect();
 
+    /// <summary>Leyenda del mapa de efecto de la armadura mientras el dibujo lo muestra; null si muestra el mapa de cobertura.</summary>
+    Legend? ReinforcementEffectLegend { get; }
+
     /// <summary>Cambia la atenuación del mapa ya dibujado, sin recalcular.</summary>
     OperationResult<int> SetOverlayFade(int percent);
 

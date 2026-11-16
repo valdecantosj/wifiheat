@@ -49,6 +49,8 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     public CalculationSummary? LastCalculation { get; private set; }
 
+    public Legend? ReinforcementEffectLegend => _effectShown?.Legend;
+
     public DrawingSetup GetDrawingSetup() => ReadSetup();
 
     public OperationResult<DrawingUnit> SetDrawingUnit(DrawingUnit unit)
@@ -539,6 +541,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
                 r.ReinforcedColumns, 0, 0, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, null, warnings), warnings);
         }
 
+        if (r.ResolutionLowered) warnings.Add(LoweredResolutionWarning(Session.CellSizeM, r.CellSizeM));
         var scale = new EffectScale(map.MaxDb);
         Legend legend = Legend.ForReinforcementEffect(Session.Settings, scale);
         HeatmapImage image = HeatmapRasterizer.RenderEffect(map.Grid, scale);
@@ -549,6 +552,9 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         return OperationResult<ReinforcementEffectSummary>.Ok(new ReinforcementEffectSummary(
             r.ReinforcedColumns, map.AffectedCells, map.MaxDb, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, overlay.ImagePath, warnings), warnings);
     }
+
+    private static string LoweredResolutionWarning(double sessionM, double usedM) => string.Create(Es,
+        $"La resolución de la sesión ({sessionM:0.##} m) se bajó a {usedM:0.##} m solo para este mapa; la configuración de la sesión no cambió.");
 
     private sealed record EffectDisplay(RssiGrid Grid, Legend Legend);
 

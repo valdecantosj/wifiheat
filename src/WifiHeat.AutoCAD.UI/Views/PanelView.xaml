@@ -572,6 +572,13 @@
                 <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource Value}" Text="{Binding TimeText}" />
               </Grid>
 
+              <Button Margin="0,10,0,0" HorizontalAlignment="Left" Content="_Ver efecto de la armadura" Command="{Binding ShowEffectCommand}" IsEnabled="{Binding IsReady}"
+                      AutomationProperties.Name="Ver efecto de la armadura"
+                      ToolTip="Reemplaza el mapa por la pérdida en dB que suma la armadura de las columnas (no es un nivel de señal). Calcular vuelve al mapa de cobertura." />
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Status.Info}" FontWeight="SemiBold"
+                         Text="El dibujo muestra la pérdida que agrega la armadura (diferencia en dB), no la señal. Calcular vuelve al mapa de cobertura."
+                         Visibility="{Binding ShowingEffect, Converter={StaticResource Visible}}" />
+
               <Border Style="{StaticResource Rule}" />
               <DockPanel Margin="0,10,0,0">
                 <TextBlock DockPanel.Dock="Left" Style="{StaticResource FieldLabel}" Text="Atenuación del mapa" />
@@ -582,7 +589,7 @@
                         ToolTip="0 % = colores plenos. Se aplica al mapa ya dibujado, sin recalcular." />
               </DockPanel>
 
-              <TextBlock Style="{StaticResource SubHeading}" Text="Leyenda: RSSI estimado" />
+              <TextBlock Style="{StaticResource SubHeading}" Text="{Binding LegendTitle}" TextWrapping="Wrap" />
               <ItemsControl ItemsSource="{Binding Legend}" Focusable="False">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>

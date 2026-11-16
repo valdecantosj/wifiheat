@@ -32,6 +32,9 @@ public sealed class CalculationViewModel : ObservableObject
     private string _readiness = "";
     private int _fadePercent;
     private bool _loading;
+    private bool _showingEffect;
+    private IReadOnlyList<LegendEntryViewModel> _legend = CoverageLegend;
+    private string _legendTitle = CoverageLegendTitle;
 
     internal CalculationViewModel(PanelViewModel owner)
     {
@@ -40,9 +43,32 @@ public sealed class CalculationViewModel : ObservableObject
         CalculateCommand = RelayCommand.Async(CalculateAsync);
         PickAreaCommand = RelayCommand.Async(PickAreaAsync);
         UseRectangleCommand = new RelayCommand(UseRectangle);
+        ShowEffectCommand = RelayCommand.Async(ShowEffectAsync);
     }
 
-    public IReadOnlyList<LegendEntryViewModel> Legend { get; } = [.. SignalScale.Levels.Select(l => new LegendEntryViewModel(l))];
+    private const string CoverageLegendTitle = "Leyenda: RSSI estimado";
+
+    private static readonly IReadOnlyList<LegendEntryViewModel> CoverageLegend = [.. SignalScale.Levels.Select(l => new LegendEntryViewModel(l))];
+
+    public IReadOnlyList<LegendEntryViewModel> Legend
+    {
+        get => _legend;
+        private set => SetField(ref _legend, value);
+    }
+
+    /// <summary>Título de la leyenda: el del mapa que muestra el dibujo.</summary>
+    public string LegendTitle
+    {
+        get => _legendTitle;
+        private set => SetField(ref _legendTitle, value);
+    }
+
+    /// <summary>True mientras el dibujo muestra la diferencia de la armadura en lugar del mapa de cobertura.</summary>
+    public bool ShowingEffect
+    {
+        get => _showingEffect;
+        private set => SetField(ref _showingEffect, value);
+    }
 
     public ObservableCollection<string> Problems { get; } = [];
 
@@ -51,6 +77,9 @@ public sealed class CalculationViewModel : ObservableObject
     public RelayCommand PickAreaCommand { get; }
 
     public RelayCommand UseRectangleCommand { get; }
+
+    /// <summary>«Ver efecto de la armadura»: reemplaza el mapa por la diferencia en dB con y sin armadura.</summary>
+    public RelayCommand ShowEffectCommand { get; }
 
     public int MinFade => OverlayFade.MinPercent;
 
@@ -156,6 +185,22 @@ public sealed class CalculationViewModel : ObservableObject
         _owner.Report(result, "No se pudo calcular el mapa", "Mapa calculado", $"{s.Cells} celdas, RSSI de {NumberText.Format(s.MinDbm, "0.0")} a {NumberText.Format(s.MaxDbm, "0.0")} dBm.");
     });
 
+    public Task ShowEffectAsync() => _owner.RunBusyAsync("Calculando el efecto de la armadura…", () =>
+    {
+        OperationResult<ReinforcementEffectSummary> result = _owner.Service.ShowReinforcementEffect();
+        _owner.Reload();
+        if (!result.Succeeded)
+        {
+            _owner.Report(result, "No se pudo mostrar el efecto de la armadura", "");
+            return;
+        }
+
+        ReinforcementEffectSummary s = result.Value!;
+        string detail = string.Join(" ", s.Details);
+        if (s.NothingToShow) _owner.Report(StatusKind.Warning, s.Headline, string.Join(" ", result.Warnings.Prepend(detail)));
+        else _owner.Report(result, "No se pudo mostrar el efecto de la armadura", s.Headline, detail);
+    });
+
     public async Task PickAreaAsync()
     {
         if (!_owner.RequireUnit()) return;
@@ -204,6 +249,11 @@ public sealed class CalculationViewModel : ObservableObject
             : "";
         if (_state == MapState.Current) SetProblems([.. Problems.Where(p => _summary!.Warnings.Contains(p))]);
         ShowFade(service.Settings.OverlayFadePercent);
+
+        Legend? effect = service.ReinforcementEffectLegend;
+        ShowingEffect = effect is not null;
+        LegendTitle = effect is null ? CoverageLegendTitle : $"Leyenda: {effect.Title}";
+        Legend = effect is null ? CoverageLegend : [.. effect.Levels.Select(l => new LegendEntryViewModel(l))];
     }
 
     private void SetProblems(IReadOnlyList<string> problems)
