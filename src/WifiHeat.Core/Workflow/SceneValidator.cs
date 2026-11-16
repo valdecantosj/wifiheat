@@ -1,6 +1,7 @@
 using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Materials;
 using WifiHeat.Core.Simulation;
+using WifiHeat.Core.Walls;
 
 namespace WifiHeat.Core.Workflow;
 
@@ -10,6 +11,8 @@ public static class SceneValidator
     public const double MinSegmentLengthM = 0.001;
     public const double MinPlausibleExtentM = 2;
     public const double MaxPlausibleExtentM = 500;
+
+    private static readonly System.Globalization.CultureInfo Es = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
 
     public static ValidationReport Validate(IReadOnlyList<Wall> walls, MaterialCatalog catalog, IEnumerable<ValidationIssue>? hostIssues = null)
     {
@@ -52,10 +55,16 @@ public static class SceneValidator
             }
         }
 
+        issues.AddRange(DoubleCountIssues(walls));
         if (ScaleIssue(walls) is { } scale) issues.Add(scale);
 
         return new ValidationReport(issues);
     }
+
+    /// <summary>Un aviso por cada grupo de muros paralelos y cercanos, que suman la pérdida dos veces.</summary>
+    public static IEnumerable<ValidationIssue> DoubleCountIssues(IReadOnlyList<Wall> walls) =>
+        ParallelWalls.Find(walls).Select(g => new ValidationIssue(IssueSeverity.Warning, ValidationIssue.DoubleCount, g.WallIds[0],
+            string.Create(Es, $"Muros {string.Join(", ", g.WallIds)} paralelos a {g.SeparationM:0.##} m: parecen las dos caras de un mismo muro y la pérdida se suma dos veces. Convertirlos en un eje.")));
 
     /// <summary>Aviso si la envolvente de los muros no tiene un tamaño verosímil para un edificio.</summary>
     public static ValidationIssue? ScaleIssue(IReadOnlyList<Wall> walls)
