@@ -133,7 +133,7 @@ public sealed class CalculationViewModel : ObservableObject
             bool done = _owner.Run(() =>
             {
                 OperationResult<int> result = _owner.Service.SetOverlayFade(value);
-                if (!_owner.Report(result, $"Atenuación del mapa: {value} %.")) ShowFade(previous);
+                if (!_owner.Report(result, "No se pudo cambiar la atenuación", $"Atenuación del mapa: {value} %")) ShowFade(previous);
             });
             if (!done) ShowFade(previous);
         }
@@ -148,30 +148,30 @@ public sealed class CalculationViewModel : ObservableObject
         SetProblems([.. result.Errors, .. result.Warnings]);
         if (!result.Succeeded)
         {
-            _owner.Report(StatusKind.Error, result.Errors[^1]);
+            _owner.Report(StatusKind.Error, "No se pudo calcular el mapa", result.Errors.Count == 1 ? result.Errors[0] : $"{result.Errors.Count} problemas; ver la lista en «5 · Calcular y mostrar».");
             return;
         }
 
         CalculationSummary s = result.Value!;
-        _owner.Report(result, $"Mapa calculado: {s.Cells} celdas, RSSI de {NumberText.Format(s.MinDbm, "0.0")} a {NumberText.Format(s.MaxDbm, "0.0")} dBm.");
+        _owner.Report(result, "No se pudo calcular el mapa", "Mapa calculado", $"{s.Cells} celdas, RSSI de {NumberText.Format(s.MinDbm, "0.0")} a {NumberText.Format(s.MaxDbm, "0.0")} dBm.");
     });
 
     public async Task PickAreaAsync()
     {
         if (!_owner.RequireUnit()) return;
 
-        await _owner.RunAsync("Seleccionar en el dibujo una polilínea cerrada de tramos rectos (Esc cancela).", async () =>
+        await _owner.RunAsync(PanelMode.CoverageArea, async () =>
         {
             string? handle = await _owner.Interaction.PickPolylineAsync("Polilínea cerrada del área de cobertura");
             if (handle is null)
             {
-                _owner.Report(StatusKind.Info, "Selección del área cancelada.");
+                _owner.Report(StatusKind.Info, "Área de cobertura sin cambios", "Selección cancelada.");
                 return;
             }
 
             OperationResult<CoverageAreaInfo> result = _owner.Service.SetCoverageArea(handle);
             _owner.Reload();
-            _owner.Report(result, result.Succeeded ? $"Área de cobertura: {Describe(result.Value!)}." : "");
+            _owner.Report(result, "No se pudo usar la polilínea", "Área de cobertura definida", result.Succeeded ? $"{Describe(result.Value!)}." : "");
         });
     }
 
@@ -179,7 +179,7 @@ public sealed class CalculationViewModel : ObservableObject
     {
         OperationResult<CoverageAreaInfo> result = _owner.Service.ClearCoverageArea();
         _owner.Reload();
-        _owner.Report(result, "Área de cobertura: rectángulo de los muros.");
+        _owner.Report(result, "No se pudo cambiar el área de cobertura", "Área de cobertura: rectángulo de los muros");
     });
 
     internal void Update()

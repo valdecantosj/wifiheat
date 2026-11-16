@@ -87,7 +87,7 @@ public sealed class PrepareViewModel : ObservableObject
             {
                 OperationResult<DrawingUnit> result = _owner.Service.SetDrawingUnit(value.Unit);
                 _owner.Reload();
-                _owner.Report(result, $"Unidad del dibujo: {value.Label.ToLowerInvariant()}.");
+                _owner.Report(result, "No se pudo guardar la unidad", $"Unidad del dibujo: {value.Label.ToLowerInvariant()}");
             });
             if (!done) Restore(previous);
         }
@@ -150,12 +150,12 @@ public sealed class PrepareViewModel : ObservableObject
         if (!_owner.RequireUnit()) return;
         if (!TryGetMergeGap(out double gap)) return;
 
-        await _owner.RunAsync("Marcá con dos clics el rectángulo que encierra una sola planta (Esc cancela).", async () =>
+        await _owner.RunAsync(PanelMode.PickZone, async () =>
         {
             BoundingBox? window = await _owner.Interaction.PickWindowAsync("Zona de la planta");
             if (window is null)
             {
-                _owner.Report(StatusKind.Info, "Selección de la zona cancelada.");
+                _owner.Report(StatusKind.Info, "Selección de la zona cancelada");
                 return;
             }
 
@@ -163,14 +163,14 @@ public sealed class PrepareViewModel : ObservableObject
             if (!survey.Succeeded)
             {
                 SetWindow(null, []);
-                _owner.Report(survey, "");
+                _owner.Report(survey, "No se pudo leer la zona de la planta", "");
                 return;
             }
 
             SetWindow(window, survey.Value!.Layers);
-            _owner.Report(StatusKind.Info, survey.Value.SuggestedLayer is { } suggested
-                ? $"{Layers.Count} capa(s) dentro de la zona. Sugerida: {suggested}. Revisar las capas y generar los ejes."
-                : $"{Layers.Count} capa(s) dentro de la zona. Elegir las capas de las caras de muro.");
+            _owner.Report(StatusKind.Info, $"{Layers.Count} capa(s) en la zona de la planta", survey.Value.SuggestedLayer is { } suggested
+                ? $"Sugerida: {suggested}. Revisar las capas marcadas y generar los ejes."
+                : "Marcar las capas de las caras de muro y generar los ejes.");
         });
     }
 
@@ -178,14 +178,14 @@ public sealed class PrepareViewModel : ObservableObject
     {
         if (_window is not { } window)
         {
-            _owner.Report(StatusKind.Warning, "Primero elegir la zona de la planta.");
+            _owner.Report(StatusKind.Warning, "Falta la zona de la planta", "Usar «Elegir zona de la planta…» antes de generar los ejes.");
             return;
         }
 
         string[] layers = [.. Layers.Where(l => l.IsSelected).Select(l => l.Name)];
         if (layers.Length == 0)
         {
-            _owner.Report(StatusKind.Warning, "Marcar al menos una capa.");
+            _owner.Report(StatusKind.Warning, "No hay capas marcadas", "Marcar al menos una capa con caras de muro.");
             return;
         }
 
@@ -196,7 +196,7 @@ public sealed class PrepareViewModel : ObservableObject
             OperationResult<AxisGeneration> result = _owner.Service.GenerateAxes(window, layers, gap);
             if (!result.Succeeded)
             {
-                _owner.Report(result, "");
+                _owner.Report(result, "No se generaron ejes", "");
                 return;
             }
 
@@ -209,7 +209,8 @@ public sealed class PrepareViewModel : ObservableObject
                 : $"{g.AxisCount} eje(s): {g.Created} creado(s), {g.Kept} conservado(s), {g.Removed} reemplazado(s). " +
                   $"Espesor {NumberText.Format(g.MinThicknessM, "0.###")} a {NumberText.Format(g.MaxThicknessM, "0.###")} m. Falta asignarles material.";
             _owner.Reload();
-            _owner.Report(result, g.AxisCount == 0 ? "No se generaron ejes." : $"{g.AxisCount} eje(s) de muro en el dibujo.");
+            if (g.AxisCount == 0) _owner.Report(StatusKind.Warning, "No se generaron ejes", string.Join(" ", result.Warnings.DefaultIfEmpty("No hay pares de caras paralelas en las capas marcadas.")));
+            else _owner.Report(result, "No se generaron ejes", $"{g.AxisCount} eje(s) de muro generados", "Falta asignarles material en «3 · Estructuras (muros)».");
         });
     }
 
@@ -222,7 +223,7 @@ public sealed class PrepareViewModel : ObservableObject
     {
         if (NumberText.TryParse(MergeGapText, out gap) && AxisDetectionOptions.MergeGapError(gap) is null) return true;
 
-        _owner.Report(StatusKind.Error, AxisDetectionOptions.MergeGapError(double.NaN)!);
+        _owner.Report(StatusKind.Error, "Umbral de unión no válido", AxisDetectionOptions.MergeGapError(double.NaN)!);
         return false;
     }
 

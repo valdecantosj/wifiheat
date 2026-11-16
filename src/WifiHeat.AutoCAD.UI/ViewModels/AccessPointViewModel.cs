@@ -116,12 +116,12 @@ public sealed class AccessPointViewModel : ObservableObject
     {
         if (!_owner.RequireUnit()) return;
 
-        await _owner.RunAsync("Indicar la ubicación del AP en el dibujo (Esc cancela).", async () =>
+        await _owner.RunAsync(PanelMode.PlaceAccessPoint, async () =>
         {
-            Vec2? point = await _owner.Interaction.PickPointAsync("Ubicación del AP");
+            Vec2? point = await _owner.Interaction.PickPointAsync("Ubicación del punto de acceso");
             if (point is null)
             {
-                _owner.Report(StatusKind.Info, "Ubicación del AP cancelada.");
+                _owner.Report(StatusKind.Info, "Ubicación del punto de acceso cancelada");
                 return;
             }
 
@@ -170,7 +170,7 @@ public sealed class AccessPointViewModel : ObservableObject
 
         if (!NumberText.TryParse(_xText, out double x) || !NumberText.TryParse(_yText, out double y))
         {
-            _owner.Report(StatusKind.Error, "La posición del AP necesita X e Y numéricos, en metros.");
+            _owner.Report(StatusKind.Error, "Posición no válida", "X e Y tienen que ser números, en metros.");
             if (_hasAccessPoint) Update();
             return;
         }
@@ -182,7 +182,7 @@ public sealed class AccessPointViewModel : ObservableObject
     {
         OperationResult<AccessPointInfo> result = _owner.Service.SetAccessPoint(position);
         _owner.Reload();
-        _owner.Report(result, result.Succeeded ? $"{result.Value!.Name} en {result.Value.PositionM} m." : "");
+        _owner.Report(result, "No se pudo ubicar el punto de acceso", "Punto de acceso ubicado", result.Succeeded ? $"{result.Value!.Name} en {result.Value.PositionM} m." : "");
     }
 
     private void ApplySettings()
@@ -198,7 +198,7 @@ public sealed class AccessPointViewModel : ObservableObject
         {
             if (NumberText.TryParse(fields[i].Text, out values[i])) continue;
 
-            _owner.Report(StatusKind.Error, $"{fields[i].Name}: «{fields[i].Text}» no es un número. Se mantiene el valor anterior.");
+            _owner.Report(StatusKind.Error, $"{fields[i].Name} no válida", $"«{fields[i].Text}» no es un número. Se mantiene el valor anterior.");
             ShowFields(current);
             return;
         }
@@ -223,9 +223,9 @@ public sealed class AccessPointViewModel : ObservableObject
         {
             OperationResult<SimulationSettings> result = _owner.Service.Configure(wanted);
             _owner.Reload();
-            if (!result.Succeeded) _owner.Report(StatusKind.Error, $"{string.Join(" ", result.Errors)} Se mantienen los valores anteriores.");
-            else if (_owner.Calculation.IsOutdated) _owner.Report(StatusKind.Warning, "Parámetros actualizados. El mapa quedó desactualizado: volver a calcular.");
-            else _owner.Report(result, "Parámetros actualizados.");
+            if (!result.Succeeded) _owner.Report(StatusKind.Error, "Parámetros no válidos", $"{string.Join(" ", result.Errors)} Se mantienen los valores anteriores.");
+            else if (_owner.Calculation.IsOutdated) _owner.Report(StatusKind.Warning, "Mapa desactualizado", "Los parámetros cambiaron. Volver a calcular el mapa.");
+            else _owner.Report(result, "Parámetros no válidos", "Parámetros actualizados");
         });
         if (!done) ShowFields(current);
     }

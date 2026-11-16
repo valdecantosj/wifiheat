@@ -42,6 +42,10 @@ internal sealed class FakeInteraction : IDrawingInteraction
         return Task.FromResult(Polyline);
     }
 
+    public int Cancelled { get; private set; }
+
+    public void CancelPrompt() => Cancelled++;
+
     public void Show(IReadOnlyCollection<string> handles, bool zoom)
     {
         if (ShowFailure is not null) throw ShowFailure;

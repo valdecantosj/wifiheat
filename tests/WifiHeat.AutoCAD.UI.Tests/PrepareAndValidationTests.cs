@@ -54,8 +54,8 @@ public class PrepareAndValidationTests
         Assert.Empty(s.Interaction.Prompts);
         Assert.Null(s.Drawing.AccessPoint);
         Assert.Equal("", s.Panel.AccessPoint.XText);
-        Assert.Equal(StatusKind.Warning, s.Panel.StatusKind);
-        Assert.Contains("unidad", s.Panel.StatusMessage);
+        Assert.Equal(StatusKind.Warning, s.Panel.Messages.Kind);
+        Assert.Contains("unidad", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class PrepareAndValidationTests
 
         Assert.Equal(DrawingUnit.Centimetres, s.Drawing.Unit);
         Assert.True(s.Panel.Prepare.HasUnit);
-        Assert.Equal(StatusKind.Success, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Success, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class PrepareAndValidationTests
         Sample s = Sample.Room();
 
         Assert.Equal(DrawingUnit.Metres, s.Panel.Prepare.SelectedUnit!.Unit);
-        Assert.Equal("", s.Panel.StatusMessage);
+        Assert.Equal("", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class PrepareAndValidationTests
         await s.Panel.Prepare.PickWindowAsync();
 
         Assert.False(s.Panel.Prepare.HasWindow);
-        Assert.Equal(StatusKind.Info, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Info, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class PrepareAndValidationTests
         await s.Panel.Prepare.PickWindowAsync();
 
         Assert.False(s.Panel.Prepare.HasWindow);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class PrepareAndValidationTests
         Assert.False(s.Panel.Prepare.CanGenerate);
         s.Panel.Prepare.GenerateAxes();
         Assert.Empty(s.Drawing.Walls);
-        Assert.Equal(StatusKind.Warning, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Warning, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class PrepareAndValidationTests
         s.Panel.Prepare.GenerateAxes();
 
         Assert.Empty(s.Drawing.Walls);
-        Assert.Equal(StatusKind.Warning, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Warning, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class PrepareAndValidationTests
         s.Panel.Prepare.GenerateAxes();
 
         Assert.Empty(s.Drawing.Walls);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -290,8 +290,8 @@ public class PrepareAndValidationTests
 
         Assert.True(s.Panel.Validation.IsValid);
         Assert.False(s.Panel.Validation.HasItems);
-        Assert.Equal(StatusKind.Success, s.Panel.StatusKind);
-        Assert.Contains("5 muro(s)", s.Panel.StatusMessage);
+        Assert.Equal(StatusKind.Success, s.Panel.Messages.Kind);
+        Assert.Contains("5 muro(s)", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -303,7 +303,7 @@ public class PrepareAndValidationTests
         s.Panel.Validation.Validate();
 
         Assert.Equal(1, s.Panel.Validation.ErrorCount);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
         Assert.Equal(6, s.Panel.Walls.Rows.Count);
     }
 }

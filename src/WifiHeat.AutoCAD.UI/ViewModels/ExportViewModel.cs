@@ -33,7 +33,7 @@ public sealed class ExportViewModel : ObservableObject
     {
         if (!_owner.Service.HasResult)
         {
-            _owner.Report(StatusKind.Warning, _owner.Calculation.IsOutdated
+            _owner.Report(StatusKind.Warning, "No hay mapa para exportar", _owner.Calculation.IsOutdated
                 ? "El mapa está desactualizado. Volver a calcular antes de exportar."
                 : "Primero calcular el mapa.");
             return;
@@ -42,12 +42,12 @@ public sealed class ExportViewModel : ObservableObject
         string? path = _owner.Interaction.AskSavePath(_owner.Service.SuggestedExportPath);
         if (path is null)
         {
-            _owner.Report(StatusKind.Info, "Exportación cancelada.");
+            _owner.Report(StatusKind.Info, "Exportación cancelada");
             return;
         }
 
         OperationResult<string> result = _owner.Service.ExportPng(path);
         if (result.Succeeded) LastPath = result.Value!;
-        _owner.Report(result, $"Imagen guardada en {result.Value}");
+        _owner.Report(result, "No se pudo exportar la imagen", "Imagen exportada", result.Succeeded ? result.Value! : "");
     });
 }

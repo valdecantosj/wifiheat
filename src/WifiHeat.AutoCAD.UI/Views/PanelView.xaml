@@ -626,7 +626,7 @@
       <!-- Esperando al usuario u ocupado -->
       <Border Grid.Row="2" Background="{DynamicResource Banner.Background}" Padding="10,6"
               Visibility="{Binding IsInteracting, Converter={StaticResource Visible}}">
-        <TextBlock TextWrapping="Wrap" Text="{Binding InteractionHint}" />
+        <TextBlock TextWrapping="Wrap" Text="{Binding ActiveMode.Instruction}" />
       </Border>
       <Border Grid.Row="2" Background="{DynamicResource Banner.Background}" Padding="10,6"
               Visibility="{Binding IsBusy, Converter={StaticResource Visible}}">
@@ -644,13 +644,13 @@
               <Style TargetType="Ellipse">
                 <Setter Property="Fill" Value="{DynamicResource Status.Info}" />
                 <Style.Triggers>
-                  <DataTrigger Binding="{Binding StatusKind}" Value="Error">
+                  <DataTrigger Binding="{Binding Messages.Kind}" Value="Error">
                     <Setter Property="Fill" Value="{DynamicResource Status.Error}" />
                   </DataTrigger>
-                  <DataTrigger Binding="{Binding StatusKind}" Value="Warning">
+                  <DataTrigger Binding="{Binding Messages.Kind}" Value="Warning">
                     <Setter Property="Fill" Value="{DynamicResource Status.Warning}" />
                   </DataTrigger>
-                  <DataTrigger Binding="{Binding StatusKind}" Value="Success">
+                  <DataTrigger Binding="{Binding Messages.Kind}" Value="Success">
                     <Setter Property="Fill" Value="{DynamicResource Status.Success}" />
                   </DataTrigger>
                 </Style.Triggers>
@@ -658,12 +658,12 @@
             </Ellipse.Style>
           </Ellipse>
           <TextBlock x:Name="StatusText" TextWrapping="Wrap" MaxHeight="78" TextTrimming="CharacterEllipsis"
-                     ToolTip="{Binding StatusMessage}" AutomationProperties.LiveSetting="Polite">
+                     ToolTip="{Binding Messages.Text}" AutomationProperties.LiveSetting="Polite">
             <TextBlock.Style>
               <Style TargetType="TextBlock">
-                <Setter Property="Text" Value="{Binding StatusMessage}" />
+                <Setter Property="Text" Value="{Binding Messages.Text}" />
                 <Style.Triggers>
-                  <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                  <DataTrigger Binding="{Binding Messages.Text}" Value="">
                     <Setter Property="Text" Value="Listo." />
                   </DataTrigger>
                 </Style.Triggers>

@@ -92,7 +92,7 @@ public sealed class QueryViewModel : ObservableObject
     {
         if (!_owner.RequireUnit()) return;
 
-        await _owner.RunAsync("Indicar puntos en el dibujo; cada clic actualiza la tarjeta (Esc o Enter termina).", async () =>
+        await _owner.RunAsync(PanelMode.QueryPoint, async () =>
         {
             IsActive = true;
             try
@@ -104,7 +104,7 @@ public sealed class QueryViewModel : ObservableObject
                     count++;
                 }
 
-                if (count == 0) _owner.Report(StatusKind.Info, "Consulta cancelada.");
+                if (count == 0) _owner.Report(StatusKind.Info, "Consulta cancelada");
             }
             finally
             {
@@ -141,13 +141,13 @@ public sealed class QueryViewModel : ObservableObject
         OperationResult<QueryResult> result = _owner.Service.Query(point);
         if (!result.Succeeded)
         {
-            _owner.Report(result, "");
+            _owner.Report(result, "No se pudo consultar el punto", "");
             return false;
         }
 
         _point = point;
         Show(result.Value);
-        _owner.Report(StatusKind.Success, $"RSSI estimado en {point} m: {ReceivedText} ({result.Value!.Level.ColorName}).");
+        _owner.Report(StatusKind.Success, $"RSSI estimado: {ReceivedText}", $"En {point} m ({result.Value!.Level.ColorName}).");
         return true;
     }
 

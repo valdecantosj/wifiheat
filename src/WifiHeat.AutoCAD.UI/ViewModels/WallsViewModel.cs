@@ -273,12 +273,12 @@ public sealed class WallsViewModel : ObservableObject
 
     public async Task PickInDrawingAsync()
     {
-        await _owner.RunAsync("Seleccionar líneas o polilíneas en el dibujo y terminar con Enter (Esc cancela).", async () =>
+        await _owner.RunAsync(PanelMode.PickLines, async () =>
         {
             IReadOnlyList<string>? handles = await _owner.Interaction.PickEntitiesAsync("Seleccionar muros o líneas");
             if (handles is null)
             {
-                _owner.Report(StatusKind.Info, "Selección cancelada.");
+                _owner.Report(StatusKind.Info, "Selección cancelada");
                 return;
             }
 
@@ -286,9 +286,9 @@ public sealed class WallsViewModel : ObservableObject
             foreach (WallRowViewModel row in _rows) row.SetSelected(chosen.Remove(row.Handle));
             _extraSelection = [.. chosen];
             OnSelectionChanged();
-            _owner.Report(StatusKind.Info, ExtraSelectionCount > 0
-                ? $"{SelectionText}. Al asignarles material, las entidades nuevas pasan a la capa de muros."
-                : $"{SelectionText}.");
+            _owner.Report(StatusKind.Info, SelectionText, ExtraSelectionCount > 0
+                ? "Al asignarles material, las entidades nuevas pasan a la capa de muros."
+                : "");
         });
     }
 
@@ -297,7 +297,7 @@ public sealed class WallsViewModel : ObservableObject
         string[] handles = SelectedHandles();
         if (handles.Length == 0)
         {
-            _owner.Report(StatusKind.Warning, "No hay muros seleccionados.");
+            _owner.Report(StatusKind.Warning, "No hay muros seleccionados");
             return;
         }
 
@@ -327,13 +327,13 @@ public sealed class WallsViewModel : ObservableObject
         string[] handles = SelectedHandles();
         if (handles.Length == 0)
         {
-            _owner.Report(StatusKind.Warning, "No hay muros seleccionados. Marcar filas de la tabla o usar «Seleccionar en el dibujo».");
+            _owner.Report(StatusKind.Warning, "No hay muros seleccionados", "Marcar filas de la tabla o usar «Seleccionar en el dibujo…».");
             return;
         }
 
         if (_bulkMaterial is not { } material)
         {
-            _owner.Report(StatusKind.Warning, "Elegir el material a asignar.");
+            _owner.Report(StatusKind.Warning, "Falta el material", "Elegir el material a asignar.");
             return;
         }
 
@@ -342,7 +342,7 @@ public sealed class WallsViewModel : ObservableObject
         {
             if (!NumberText.TryParse(BulkThicknessText, out double value) || value <= 0)
             {
-                _owner.Report(StatusKind.Error, "El espesor debe ser un número mayor que 0, en metros. Dejarlo vacío conserva el de cada muro.");
+                _owner.Report(StatusKind.Error, "Espesor no válido", "Tiene que ser un número mayor que 0, en metros. Vacío conserva el de cada muro.");
                 return;
             }
 
@@ -362,7 +362,7 @@ public sealed class WallsViewModel : ObservableObject
             }
 
             string thicknessText = thickness is { } t ? $"espesor {NumberText.Format(t, "0.###")} m" : "espesor conservado";
-            _owner.Report(result, $"{result.Value} muro(s) con {material.Name} y {thicknessText}.");
+            _owner.Report(result, "No se pudo asignar el material", $"{result.Value} muro(s) con {material.Name}", $"{char.ToUpper(thicknessText[0])}{thicknessText[1..]}.");
         });
     }
 
@@ -416,7 +416,7 @@ public sealed class WallsViewModel : ObservableObject
         {
             OperationResult<int> result = _owner.Service.AssignMaterial([row.Handle], material.Id, null);
             _owner.Reload();
-            _owner.Report(result, $"Muro {row.Handle}: {material.Name}.");
+            _owner.Report(result, "No se pudo asignar el material", $"Muro {row.Handle}: {material.Name}");
         });
         if (!done) row.Revert();
     }
@@ -425,14 +425,14 @@ public sealed class WallsViewModel : ObservableObject
     {
         if (!NumberText.TryParse(text, out double thickness) || thickness <= 0)
         {
-            _owner.Report(StatusKind.Error, "El espesor debe ser un número mayor que 0, en metros.");
+            _owner.Report(StatusKind.Error, "Espesor no válido", "Tiene que ser un número mayor que 0, en metros.");
             row.Revert();
             return;
         }
 
         if (row.MaterialId is not { } materialId)
         {
-            _owner.Report(StatusKind.Warning, $"Elegir primero el material del muro {row.Handle}.");
+            _owner.Report(StatusKind.Warning, "Falta el material", $"Elegir primero el material del muro {row.Handle}.");
             row.Revert();
             return;
         }
@@ -441,7 +441,7 @@ public sealed class WallsViewModel : ObservableObject
         {
             OperationResult<int> result = _owner.Service.AssignMaterial([row.Handle], materialId, thickness);
             _owner.Reload();
-            _owner.Report(result, $"Muro {row.Handle}: espesor {NumberText.Format(thickness, "0.###")} m.");
+            _owner.Report(result, "No se pudo cambiar el espesor", $"Muro {row.Handle}: espesor {NumberText.Format(thickness, "0.###")} m");
         });
         if (!done) row.Revert();
     }

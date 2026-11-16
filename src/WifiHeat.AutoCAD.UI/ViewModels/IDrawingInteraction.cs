@@ -20,6 +20,9 @@ public interface IDrawingInteraction
 
     Task<string?> PickPolylineAsync(string prompt);
 
+    /// <summary>Cancela la pregunta pendiente, como Esc: la pregunta devuelve null.</summary>
+    void CancelPrompt();
+
     /// <summary>Deja seleccionadas las entidades en el dibujo y, si se pide, encuadra la vista en ellas.</summary>
     void Show(IReadOnlyCollection<string> handles, bool zoom);
 

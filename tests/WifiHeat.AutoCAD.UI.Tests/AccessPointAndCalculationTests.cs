@@ -55,7 +55,7 @@ public class AccessPointAndCalculationTests
         await s.Panel.AccessPoint.PickAsync();
 
         Assert.Equal(new Vec2(2, 4), s.Drawing.AccessPoint!.PositionM);
-        Assert.Equal(StatusKind.Info, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Info, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class AccessPointAndCalculationTests
 
         Assert.Equal(new Vec2(2, 4), s.Drawing.AccessPoint!.PositionM);
         Assert.Equal("4", s.Panel.AccessPoint.YText);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class AccessPointAndCalculationTests
         typeof(AccessPointViewModel).GetProperty(property)!.SetValue(s.Panel.AccessPoint, value);
 
         Assert.Equal(MapState.Outdated, s.Panel.Calculation.State);
-        Assert.Contains("desactualizado", s.Panel.StatusMessage);
+        Assert.Contains("desactualizado", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class AccessPointAndCalculationTests
 
         Assert.Equal(before, s.Drawing.Settings);
         Assert.Equal(restored, info.GetValue(s.Panel.AccessPoint));
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public class AccessPointAndCalculationTests
         Assert.EndsWith(" dBm", c.MaxText);
         Assert.Contains("ms de cálculo", c.TimeText);
         Assert.Equal(1, s.Drawing.Draws);
-        Assert.Equal(StatusKind.Success, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Success, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public class AccessPointAndCalculationTests
         Assert.Equal("Sin calcular", s.Panel.Calculation.StateText);
         Assert.True(s.Panel.Calculation.HasProblems);
         Assert.Contains(s.Panel.Calculation.Problems, p => p.Contains("A1"));
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
         Assert.Equal(0, s.Drawing.Draws);
     }
 
@@ -294,7 +294,7 @@ public class AccessPointAndCalculationTests
         s.Panel.Calculation.FadePercent = 95;
 
         Assert.Equal(40, s.Panel.Calculation.FadePercent);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
         Assert.Equal(0, s.Panel.Calculation.MinFade);
         Assert.Equal(90, s.Panel.Calculation.MaxFade);
     }
@@ -328,7 +328,7 @@ public class AccessPointAndCalculationTests
         await s.Panel.Calculation.PickAreaAsync();
 
         Assert.False(s.Panel.Calculation.HasCustomArea);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
     }
 
     [Fact]

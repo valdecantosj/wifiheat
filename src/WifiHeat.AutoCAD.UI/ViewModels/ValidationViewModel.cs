@@ -93,7 +93,7 @@ public sealed class ValidationViewModel : ObservableObject
             {
                 _owner.Interaction.Show([handle], zoom: true);
                 _owner.Walls.Focus(handle);
-                _owner.Report(StatusKind.Info, $"Entidad {handle} seleccionada en el dibujo.");
+                _owner.Report(StatusKind.Info, $"Entidad {handle} seleccionada", "Encuadrada en el dibujo.");
             });
         }
     }
@@ -101,9 +101,9 @@ public sealed class ValidationViewModel : ObservableObject
     public void Validate() => _owner.Run(() =>
     {
         _owner.Reload();
-        if (ErrorCount > 0) _owner.Report(StatusKind.Error, $"El plano tiene {ErrorCount} error(es). Elegir cada uno en la lista para ubicarlo en el dibujo.");
-        else if (WarningCount > 0) _owner.Report(StatusKind.Warning, $"Plano válido con {WarningCount} aviso(s).");
-        else _owner.Report(StatusKind.Success, $"Plano válido: {WallCount} muro(s), sin errores.");
+        if (ErrorCount > 0) _owner.Report(StatusKind.Error, $"El plano tiene {ErrorCount} error(es)", "Elegir cada uno en la lista para ubicarlo en el dibujo.");
+        else if (WarningCount > 0) _owner.Report(StatusKind.Warning, $"Plano válido con {WarningCount} aviso(s)", "Revisarlos en la lista de «2 · Plano y validación».");
+        else _owner.Report(StatusKind.Success, "Plano válido", $"{WallCount} muro(s), sin errores.");
     });
 
     internal void Update(ValidationSummary summary)

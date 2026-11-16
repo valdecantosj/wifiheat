@@ -49,7 +49,7 @@ public class WallsTests
         Assert.Equal("gypsum", s.Drawing.Walls["B1"].MaterialId);
         Assert.Equal(0.1, s.Drawing.Walls["B1"].ThicknessM);
         Assert.Equal(4, s.Panel.Validation.ErrorCount);
-        Assert.Equal(StatusKind.Success, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Success, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class WallsTests
 
         Assert.Equal(0.2, s.Drawing.Walls["A1"].ThicknessM);
         Assert.Equal("0,2", s.Row("A1").ThicknessText);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class WallsTests
 
         Assert.Equal(0.2, s.Drawing.Walls["A1"].ThicknessM);
         Assert.Equal("0,2", s.Row("A1").ThicknessText);
-        Assert.Equal(StatusKind.Warning, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Warning, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class WallsTests
         await s.Panel.Walls.PickInDrawingAsync();
 
         Assert.True(s.Row("A3").IsSelected);
-        Assert.Equal(StatusKind.Info, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Info, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -220,7 +220,8 @@ public class WallsTests
         Assert.Equal("brick", s.Drawing.Walls["A1"].MaterialId);
         Assert.Equal(0.3, s.Drawing.Walls["A2"].ThicknessM);
         Assert.Null(s.Drawing.Walls["A3"].MaterialId);
-        Assert.Equal("2 muro(s) con Ladrillo y espesor 0,3 m.", s.Panel.StatusMessage);
+        Assert.Equal("2 muro(s) con Ladrillo", s.Panel.Messages.Current!.Title);
+        Assert.Equal("Espesor 0,3 m.", s.Panel.Messages.Current.Detail);
         Assert.True(s.Row("A1").IsSelected);
     }
 
@@ -236,7 +237,7 @@ public class WallsTests
         Assert.Equal(0.2, s.Drawing.Walls["A1"].ThicknessM);
         Assert.Equal(0.1, s.Drawing.Walls["B1"].ThicknessM);
         Assert.True(s.Panel.Validation.IsValid);
-        Assert.Contains("espesor conservado", s.Panel.StatusMessage);
+        Assert.Equal("Espesor conservado.", s.Panel.Messages.Current!.Detail);
     }
 
     [Fact]
@@ -263,11 +264,11 @@ public class WallsTests
         Sample s = Sample.Room(material: null);
 
         s.Panel.Walls.Assign();
-        Assert.Contains("No hay muros seleccionados", s.Panel.StatusMessage);
+        Assert.Contains("No hay muros seleccionados", s.Panel.Messages.Text);
 
         s.Row("A1").IsSelected = true;
         s.Panel.Walls.Assign();
-        Assert.Equal("Elegir el material a asignar.", s.Panel.StatusMessage);
+        Assert.Equal("Elegir el material a asignar.", s.Panel.Messages.Current!.Detail);
         Assert.Null(s.Drawing.Walls["A1"].MaterialId);
     }
 
@@ -282,7 +283,7 @@ public class WallsTests
         s.Panel.Walls.Assign();
 
         Assert.Null(s.Drawing.Walls["A1"].MaterialId);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -335,7 +336,7 @@ public class WallsTests
 
         Assert.Equal("brick", s.Drawing.Walls["A1"].MaterialId);
         Assert.Equal("brick", s.Row("A1").Material!.Id);
-        Assert.Equal("AutoCAD está ejecutando LINE.", s.Panel.StatusMessage);
-        Assert.Equal(StatusKind.Warning, s.Panel.StatusKind);
+        Assert.Equal("AutoCAD está ejecutando LINE.", s.Panel.Messages.Current!.Detail);
+        Assert.Equal(StatusKind.Warning, s.Panel.Messages.Kind);
     }
 }

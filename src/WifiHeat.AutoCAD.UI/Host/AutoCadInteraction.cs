@@ -78,6 +78,15 @@ internal sealed class AutoCadInteraction(Document document) : IDrawingInteractio
         return answer.Status == PromptStatus.OK ? answer.ObjectId.Handle.ToString() : null;
     });
 
+    /// <summary>Dos ^C, como Esc en la línea de comandos: la pregunta pendiente termina con Cancel.</summary>
+    public void CancelPrompt()
+    {
+        if (document.IsDisposed) return;
+
+        Autodesk.AutoCAD.Internal.Utils.SetFocusToDwgView();
+        document.SendStringToExecute("", true, false, false);
+    }
+
     public void Show(IReadOnlyCollection<string> handles, bool zoom)
     {
         using DocumentLock _ = document.LockDocument();

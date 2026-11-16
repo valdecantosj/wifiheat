@@ -56,7 +56,7 @@ public class QueryExportAndPanelTests
         Assert.Equal("(3; 4) m", s.Panel.Query.PointText);
         Assert.Equal("Muros cruzados: ninguno", s.Panel.Query.CrossingsTitle);
         Assert.False(s.Panel.Query.HasCrossings);
-        Assert.Equal(StatusKind.Success, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Success, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class QueryExportAndPanelTests
         await s.Panel.Query.QueryAsync();
 
         Assert.False(s.Panel.Query.HasResult);
-        Assert.Equal("Consulta cancelada.", s.Panel.StatusMessage);
+        Assert.Equal("Consulta cancelada", s.Panel.Messages.Current!.Title);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class QueryExportAndPanelTests
         await s.Panel.Query.QueryAsync();
 
         Assert.False(s.Panel.Query.HasResult);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
         Assert.Single(s.Interaction.Prompts);
     }
 
@@ -181,7 +181,7 @@ public class QueryExportAndPanelTests
 
         Assert.Empty(s.Interaction.SuggestedPaths);
         Assert.False(s.Panel.Export.HasPath);
-        Assert.Equal("Primero calcular el mapa.", s.Panel.StatusMessage);
+        Assert.Equal("Primero calcular el mapa.", s.Panel.Messages.Current!.Detail);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class QueryExportAndPanelTests
         s.Panel.Export.Export();
 
         Assert.Empty(s.Drawing.Exported);
-        Assert.Contains("desactualizado", s.Panel.StatusMessage);
+        Assert.Contains("desactualizado", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public class QueryExportAndPanelTests
         Assert.Equal([expected], s.Drawing.Exported);
         Assert.Equal(expected, s.Panel.Export.LastPath);
         Assert.True(s.Panel.Export.HasPath);
-        Assert.Equal(StatusKind.Success, s.Panel.StatusKind);
+        Assert.Equal(StatusKind.Success, s.Panel.Messages.Kind);
     }
 
     [Fact]
@@ -220,7 +220,7 @@ public class QueryExportAndPanelTests
         s.Panel.Export.Export();
 
         Assert.Empty(s.Drawing.Exported);
-        Assert.Equal("Exportación cancelada.", s.Panel.StatusMessage);
+        Assert.Equal("Exportación cancelada", s.Panel.Messages.Current!.Title);
     }
 
     [Fact]
@@ -233,8 +233,8 @@ public class QueryExportAndPanelTests
         s.Panel.Export.Export();
 
         Assert.False(s.Panel.Export.HasPath);
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
-        Assert.Contains("disco lleno", s.Panel.StatusMessage);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
+        Assert.Contains("disco lleno", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public class QueryExportAndPanelTests
         Sample s = Sample.Room();
 
         Assert.Equal("casa.dwg", s.Panel.DocumentName);
-        Assert.Equal("", s.Panel.StatusMessage);
+        Assert.Equal("", s.Panel.Messages.Text);
         Assert.False(s.Panel.IsBusy);
         Assert.False(s.Panel.IsInteracting);
     }
@@ -258,7 +258,7 @@ public class QueryExportAndPanelTests
         s.Panel.Refresh();
 
         Assert.Equal(5, s.Panel.Walls.Rows.Count);
-        Assert.Equal("", s.Panel.StatusMessage);
+        Assert.Equal("", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public class QueryExportAndPanelTests
 
         Assert.Empty(s.Interaction.Prompts);
         Assert.Equal(0, s.Drawing.Draws);
-        Assert.Equal("AutoCAD está ejecutando LINE.", s.Panel.StatusMessage);
+        Assert.Equal("AutoCAD está ejecutando LINE.", s.Panel.Messages.Current!.Detail);
     }
 
     [Fact]
@@ -284,8 +284,8 @@ public class QueryExportAndPanelTests
 
         s.Panel.Walls.ShowRow(s.Row("A1"));
 
-        Assert.Equal(StatusKind.Error, s.Panel.StatusKind);
-        Assert.Contains("sin vista", s.Panel.StatusMessage);
+        Assert.Equal(StatusKind.Error, s.Panel.Messages.Kind);
+        Assert.Contains("sin vista", s.Panel.Messages.Text);
     }
 
     [Fact]
@@ -300,9 +300,9 @@ public class QueryExportAndPanelTests
         Task query = panel.Query.QueryAsync();
         Assert.True(panel.IsInteracting);
         Assert.True(panel.Query.IsActive);
-        Assert.NotEqual("", panel.InteractionHint);
+        Assert.Equal(PanelMode.QueryPoint, panel.ActiveMode);
         panel.Validation.Validate();
-        Assert.Equal(StatusKind.Warning, panel.StatusKind);
+        Assert.Equal(StatusKind.Warning, panel.Messages.Kind);
 
         pending.SetResult(null);
         await query;
@@ -360,6 +360,8 @@ public class QueryExportAndPanelTests
         public Task<BoundingBox?> PickWindowAsync(string prompt) => Task.FromResult<BoundingBox?>(null);
         public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt) => Task.FromResult<IReadOnlyList<string>?>(null);
         public Task<string?> PickPolylineAsync(string prompt) => Task.FromResult<string?>(null);
+        public void CancelPrompt() => Cancelled++;
+        public int Cancelled { get; private set; }
         public void Show(IReadOnlyCollection<string> handles, bool zoom) { }
         public string? AskSavePath(string suggestedPath) => null;
         public Task YieldAsync() => Task.CompletedTask;

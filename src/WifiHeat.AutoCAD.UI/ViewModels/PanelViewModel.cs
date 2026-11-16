@@ -3,32 +3,22 @@ using WifiHeat.Core.Workflow;
 
 namespace WifiHeat.AutoCAD.UI.ViewModels;
 
-public enum StatusKind
-{
-    Info,
-    Success,
-    Warning,
-    Error,
-}
-
 /// <summary>
 /// Raíz del panel de un documento. No calcula: muestra y edita datos y llama a <see cref="IWifiHeatService"/>.
 /// Usar solo desde el hilo de la interfaz.
 /// </summary>
 public sealed class PanelViewModel : ObservableObject
 {
-    private string _statusMessage = "";
-    private StatusKind _statusKind = StatusKind.Info;
     private bool _isBusy;
     private string _busyText = "";
-    private bool _isInteracting;
-    private string _interactionHint = "";
+    private PanelMode? _activeMode;
 
-    public PanelViewModel(IWifiHeatService service, IDrawingInteraction interaction, string documentName = "")
+    public PanelViewModel(IWifiHeatService service, IDrawingInteraction interaction, string documentName = "", MessageCenter? messages = null)
     {
         Service = service;
         Interaction = interaction;
         DocumentName = documentName;
+        Messages = messages ?? new MessageCenter();
         Materials = [.. service.Materials.OrderBy(m => m.Name, StringComparer.CurrentCultureIgnoreCase).Select(m => new MaterialOption(m))];
 
         Prepare = new PrepareViewModel(this);
@@ -39,11 +29,15 @@ public sealed class PanelViewModel : ObservableObject
         Query = new QueryViewModel(this);
         Export = new ExportViewModel(this);
         RefreshCommand = new RelayCommand(Refresh);
+        CancelModeCommand = new RelayCommand(CancelMode);
     }
 
     public string DocumentName { get; }
 
     public IReadOnlyList<MaterialOption> Materials { get; }
+
+    /// <summary>Mensaje del pie e historial.</summary>
+    public MessageCenter Messages { get; }
 
     public PrepareViewModel Prepare { get; }
 
@@ -61,17 +55,8 @@ public sealed class PanelViewModel : ObservableObject
 
     public RelayCommand RefreshCommand { get; }
 
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        private set => SetField(ref _statusMessage, value);
-    }
-
-    public StatusKind StatusKind
-    {
-        get => _statusKind;
-        private set => SetField(ref _statusKind, value);
-    }
+    /// <summary>Cancela la pregunta pendiente en el dibujo, como Esc.</summary>
+    public RelayCommand CancelModeCommand { get; }
 
     /// <summary>True mientras corre una operación larga (cálculo).</summary>
     public bool IsBusy
@@ -86,18 +71,18 @@ public sealed class PanelViewModel : ObservableObject
         private set => SetField(ref _busyText, value);
     }
 
-    /// <summary>True mientras el panel espera un punto o una selección en el dibujo.</summary>
-    public bool IsInteracting
+    /// <summary>Modo activo mientras el panel espera un punto o una selección en el dibujo; null si no hay ninguno.</summary>
+    public PanelMode? ActiveMode
     {
-        get => _isInteracting;
-        private set => SetField(ref _isInteracting, value);
+        get => _activeMode;
+        private set
+        {
+            if (!SetField(ref _activeMode, value)) return;
+            OnPropertyChanged(nameof(IsInteracting));
+        }
     }
 
-    public string InteractionHint
-    {
-        get => _interactionHint;
-        private set => SetField(ref _interactionHint, value);
-    }
+    public bool IsInteracting => ActiveMode is not null;
 
     internal IWifiHeatService Service { get; }
 
@@ -115,7 +100,7 @@ public sealed class PanelViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Report(StatusKind.Error, Unexpected(ex));
+            ReportUnexpected(ex);
         }
     }
 
@@ -135,7 +120,7 @@ public sealed class PanelViewModel : ObservableObject
     {
         if (Prepare.HasUnit) return true;
 
-        Report(StatusKind.Warning, "Primero elegir la unidad del dibujo en «Preparar plano».");
+        Report(StatusKind.Warning, "Falta la unidad del dibujo", "Elegirla primero en «1 · Preparar plano».");
         return false;
     }
 
@@ -151,30 +136,28 @@ public sealed class PanelViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Report(StatusKind.Error, Unexpected(ex));
+            ReportUnexpected(ex);
             return false;
         }
     }
 
-    /// <summary>Acción que espera al usuario en el dibujo; hint se muestra mientras dura.</summary>
-    internal async Task RunAsync(string hint, Func<Task> action)
+    /// <summary>Acción que espera al usuario en el dibujo. El modo se quita siempre al terminar, cancelar o fallar.</summary>
+    internal async Task RunAsync(PanelMode mode, Func<Task> action)
     {
         if (!CanStart()) return;
 
-        InteractionHint = hint;
-        IsInteracting = true;
+        ActiveMode = mode;
         try
         {
             await action();
         }
         catch (Exception ex)
         {
-            Report(StatusKind.Error, Unexpected(ex));
+            ReportUnexpected(ex);
         }
         finally
         {
-            IsInteracting = false;
-            InteractionHint = "";
+            ActiveMode = null;
         }
     }
 
@@ -192,7 +175,7 @@ public sealed class PanelViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Report(StatusKind.Error, Unexpected(ex));
+            ReportUnexpected(ex);
         }
         finally
         {
@@ -201,42 +184,48 @@ public sealed class PanelViewModel : ObservableObject
         }
     }
 
-    internal void Report(StatusKind kind, string message)
-    {
-        StatusKind = kind;
-        StatusMessage = message;
-    }
+    internal void Report(StatusKind kind, string title, string detail = "") => Messages.Post(kind, title, detail);
 
-    /// <summary>Muestra errores o, si salió bien, el mensaje de éxito con los avisos. Devuelve si la operación salió bien.</summary>
-    internal bool Report<T>(OperationResult<T> result, string success)
+    /// <summary>
+    /// Error con los motivos o, si salió bien, éxito; con avisos queda como advertencia con el mismo título.
+    /// Devuelve si la operación salió bien.
+    /// </summary>
+    internal bool Report<T>(OperationResult<T> result, string failure, string success, string detail = "")
     {
         if (!result.Succeeded)
         {
-            Report(StatusKind.Error, string.Join(" ", result.Errors));
+            Report(StatusKind.Error, failure, string.Join(" ", result.Errors));
             return false;
         }
 
-        if (result.Warnings.Count > 0) Report(StatusKind.Warning, $"{success} Aviso: {string.Join(" ", result.Warnings)}");
-        else Report(StatusKind.Success, success);
+        if (result.Warnings.Count > 0) Report(StatusKind.Warning, success, string.Join(" ", result.Warnings.Prepend(detail).Where(t => t.Length > 0)));
+        else Report(StatusKind.Success, success, detail);
         return true;
+    }
+
+    private void CancelMode()
+    {
+        if (IsInteracting) Interaction.CancelPrompt();
     }
 
     private bool CanStart()
     {
         if (IsInteracting || IsBusy)
         {
-            Report(StatusKind.Warning, "Hay una operación del panel en curso en el dibujo. Terminarla o cancelarla con Esc.");
+            Report(StatusKind.Warning, "Hay una operación en curso", IsBusy ? "Esperar a que termine." : "Terminarla en el dibujo o cancelarla con Esc.");
             return false;
         }
 
         if (Interaction.BusyReason is { } reason)
         {
-            Report(StatusKind.Warning, reason);
+            Report(StatusKind.Warning, "El dibujo no está disponible", reason);
             return false;
         }
 
+        Messages.BeginAction();
         return true;
     }
 
-    private static string Unexpected(Exception ex) => $"No se pudo completar la operación ({ex.GetType().Name}: {ex.Message}).";
+    private void ReportUnexpected(Exception ex) =>
+        Report(StatusKind.Error, "No se pudo completar la operación", $"{ex.Message} ({ex.GetType().Name}).");
 }
