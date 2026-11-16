@@ -10,7 +10,10 @@ namespace WifiHeat.AutoCAD.Reading;
 /// <summary>Geometría que usa la generación de ejes: caras de muro del plano y ejes ya generados.</summary>
 public static class FaceReader
 {
-    /// <summary>Líneas y polilíneas (tramos rectos) con todos sus extremos dentro de la zona, fuera de las capas propias.</summary>
+    /// <summary>
+    /// Líneas y polilíneas (tramos rectos) con todos sus extremos dentro de la zona, fuera de las capas propias.
+    /// Las polilíneas cerradas pequeñas (posibles columnas) no se toman como caras.
+    /// </summary>
     public static IReadOnlyList<LayerFaces> ReadFaces(Database db, Transaction tr, DrawingUnit unit, BoundingBox window)
     {
         var byLayer = new Dictionary<string, List<FaceSegment>>(StringComparer.OrdinalIgnoreCase);
@@ -21,6 +24,8 @@ public static class FaceReader
             if (curve.Layer.StartsWith("WIFIHEAT_", StringComparison.OrdinalIgnoreCase)) continue;
 
             List<Segment2> straight = StraightSegments(unit, curve);
+            if (curve is Polyline closed && ColumnRules.SmallClosedFigure(straight, ColumnReader.IsClosed(closed, unit)) is not null) continue;
+
             string handle = curve.Handle.ToString();
             List<FaceSegment> segments = curve is Line
                 ? [.. straight.Select(s => new FaceSegment(handle, s))]

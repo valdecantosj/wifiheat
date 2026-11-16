@@ -1,5 +1,6 @@
 using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Materials;
+using WifiHeat.Core.Simulation;
 using WifiHeat.Core.Workflow;
 
 namespace WifiHeat.Core.Service;
@@ -48,6 +49,16 @@ public interface IWifiHeatService
     /// Las caras quedan en su capa; solo las entidades sin par pasan a la capa de muros.
     /// </summary>
     OperationResult<FaceJoin> AssignMaterialJoiningFaces(IReadOnlyCollection<string> handles, string materialId, double? thicknessM);
+
+    /// <summary>Material de las columnas y adicional de pérdida por nivel de armadura.</summary>
+    ColumnReinforcement ColumnReinforcement { get; }
+
+    /// <summary>
+    /// Marca como columnas de hormigón armado las figuras cerradas elegidas (hatches, polilíneas cerradas o columnas ya creadas).
+    /// Crea una polilínea cerrada por columna en la capa de muros, sin tocar las figuras originales. Un hatch y su contorno dan una sola
+    /// columna, y repetir la acción no duplica. Las figuras de más de 1,5 m de lado y las que tienen arcos o islas no se generan.
+    /// </summary>
+    OperationResult<ColumnGeneration> AssignColumns(IReadOnlyCollection<string> handles, Reinforcement reinforcement);
 
     /// <summary>Muros de simulación paralelos y cercanos (las dos caras de un mismo muro), que suman la pérdida dos veces.</summary>
     IReadOnlyList<ParallelWallsInfo> FindParallelWalls();

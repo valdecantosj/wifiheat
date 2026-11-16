@@ -46,7 +46,8 @@ public sealed class ValidateCommands
 
     public static void Print(Editor ed, string command, ValidationSummary summary)
     {
-        ed.WriteMessage($"\n{command}: {summary.WallCount} muro(s), {summary.ErrorCount} error(es), {summary.WarningCount} aviso(s).");
+        string columns = summary.ColumnCount == 0 ? "" : $", {summary.ColumnCount} columna(s)";
+        ed.WriteMessage($"\n{command}: {summary.WallCount - summary.ColumnCount} muro(s){columns}, {summary.ErrorCount} error(es), {summary.WarningCount} aviso(s).");
         if (summary.WallBounds is { } bounds) ed.WriteMessage($"\n  Envolvente de los muros: {bounds.Min} a {bounds.Max} m.");
         foreach (ValidationItem item in summary.Items) ed.WriteMessage($"\n  {item}");
         ed.WriteMessage("\n");

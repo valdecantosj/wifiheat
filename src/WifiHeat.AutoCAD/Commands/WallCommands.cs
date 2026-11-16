@@ -5,6 +5,7 @@ using Autodesk.AutoCAD.Runtime;
 using WifiHeat.AutoCAD.Reading;
 using WifiHeat.Core.Materials;
 using WifiHeat.Core.Service;
+using WifiHeat.Core.Simulation;
 using WifiHeat.Core.Workflow;
 using Material = WifiHeat.Core.Materials.Material;
 
@@ -13,11 +14,13 @@ namespace WifiHeat.AutoCAD.Commands;
 public sealed class WallCommands
 {
     private const string Command = "WIFIWALL";
+    private const string ColumnWord = "columna";
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-AR");
 
     /// <summary>
     /// Asigna material y espesor a líneas o polilíneas y las pasa a la capa de muros.
     /// Si la selección trae las dos caras de un mismo muro, ofrece reemplazarlas por un eje.
+    /// Con «columna» en lugar del material, marca hatches y polilíneas cerradas como columnas de hormigón armado.
     /// </summary>
     [CommandMethod(Command)]
     public void AssignWall() => CommandGuard.Run(Command, doc =>
@@ -25,28 +28,35 @@ public sealed class WallCommands
         Editor ed = doc.Editor;
         MaterialCatalog catalog = MaterialCatalogFile.Catalog;
 
-        var selectionOptions = new PromptSelectionOptions { MessageForAdding = "\nSeleccionar líneas o polilíneas de muro" };
-        var filter = new SelectionFilter([new TypedValue((int)DxfCode.Start, "LINE,LWPOLYLINE")]);
+        var selectionOptions = new PromptSelectionOptions { MessageForAdding = "\nSeleccionar líneas o polilíneas de muro, o hatches y contornos de columna" };
+        var filter = new SelectionFilter([new TypedValue((int)DxfCode.Start, "LINE,LWPOLYLINE,HATCH")]);
         PromptSelectionResult selection = ed.GetSelection(selectionOptions, filter);
         if (selection.Status == PromptStatus.Error)
         {
-            ed.WriteMessage($"\n{Command}: no se eligió ninguna línea ni polilínea.\n");
+            ed.WriteMessage($"\n{Command}: no se eligió ninguna línea, polilínea ni hatch.\n");
             return;
         }
 
         if (selection.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, Command); return; }
 
+        string[] handles = [.. selection.Value.GetObjectIds().Select(id => id.Handle.ToString())];
+        AutoCadWifiHeatService service = Sessions.Service(doc);
+
         string ids = string.Join("/", catalog.All.Select(m => m.Id));
-        PromptResult materialAnswer = ed.GetString(new PromptStringOptions($"\nMaterial [{ids}]: ") { AllowSpaces = false });
+        PromptResult materialAnswer = ed.GetString(new PromptStringOptions($"\nMaterial [{ids}] o «{ColumnWord}»: ") { AllowSpaces = false });
         if (materialAnswer.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, Command); return; }
+        if (string.Equals(materialAnswer.StringResult.Trim(), ColumnWord, StringComparison.OrdinalIgnoreCase))
+        {
+            AssignColumns(ed, service, handles);
+            return;
+        }
+
         if (!catalog.TryGet(materialAnswer.StringResult.Trim(), out Material material))
         {
             ed.WriteMessage($"\n{Command}: {ValidationIssue.UnknownMaterial}: '{materialAnswer.StringResult}' no está en el catálogo. Valores posibles: {ids}. No se modificó ningún muro.\n");
             return;
         }
 
-        string[] handles = [.. selection.Value.GetObjectIds().Select(id => id.Handle.ToString())];
-        AutoCadWifiHeatService service = Sessions.Service(doc);
         if (!AskJoinFaces(ed, service.FindFacePairs(handles), out bool join)) { CommandGuard.Cancelled(ed, Command); return; }
 
         var thicknessOptions = new PromptDoubleOptions(string.Create(Es,
@@ -80,6 +90,34 @@ public sealed class WallCommands
 
         ed.WriteMessage($"\n{Command}: {result.Value} muro(s) con material {material.Name} ({material.Id}) y {thicknessText}.\n");
     });
+
+    private static void AssignColumns(Editor ed, AutoCadWifiHeatService service, string[] handles)
+    {
+        ColumnReinforcement columns = service.ColumnReinforcement;
+        ed.WriteMessage("\nArmadura de la columna (adicional sobre el hormigón; convención del proyecto):");
+        foreach (ReinforcementLevel level in columns.Levels)
+        {
+            ed.WriteMessage(string.Create(Es, $"\n  {level.Name}: +{level.AdditionalLossDb:0.#} dB · {level.Example}"));
+        }
+
+        var options = new PromptKeywordOptions("\nArmadura") { AllowNone = true };
+        foreach (ReinforcementLevel level in columns.Levels) options.Keywords.Add(level.Name);
+        options.Keywords.Default = columns.Get(Reinforcement.Medium).Name;
+        PromptResult answer = ed.GetKeywords(options);
+        if (answer.Status is not (PromptStatus.OK or PromptStatus.None)) { CommandGuard.Cancelled(ed, Command); return; }
+
+        ReinforcementLevel chosen = answer.Status == PromptStatus.None
+            ? columns.Get(Reinforcement.Medium)
+            : columns.Levels.First(l => l.Name == answer.StringResult);
+
+        OperationResult<ColumnGeneration> result = service.AssignColumns(handles, chosen.Level);
+        CommandOutput.Problems(ed, Command, result.Errors, result.Warnings);
+        if (!result.Succeeded) return;
+
+        ColumnGeneration g = result.Value!;
+        ed.WriteMessage(string.Create(Es,
+            $"\n{Command}: {g.ColumnCount} columna(s) con armadura {chosen.Name.ToLower(Es)} (+{g.AdditionalLossDb:0.#} dB): {g.Created} creada(s), {g.Kept} que ya existía(n), {g.Duplicates} figura(s) repetida(s) de la misma columna. Las figuras originales no se modificaron.\n"));
+    }
 
     private static string Range(double min, double max) =>
         Math.Abs(max - min) < 0.0005 ? string.Create(Es, $"{min:0.###}") : string.Create(Es, $"{min:0.###} a {max:0.###}");

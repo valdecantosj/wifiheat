@@ -16,12 +16,17 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
 
     public static MaterialCatalog DefaultCatalog { get; } = new([new Material("brick", "Ladrillo", 8, 12), new Material("gypsum", "Yeso", 3, 4)]);
 
+    public static MaterialCatalog CatalogWithConcrete { get; } = new(
+        [new Material("brick", "Ladrillo", 8, 12), new Material("gypsum", "Yeso", 3, 4), new Material("concrete", "Hormigón", 20, 40)]);
+
     public DrawingUnit? Unit { get; set; } = DrawingUnit.Metres;
     public Dictionary<string, Wall> Walls { get; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> GeneratedHandles { get; } = new(StringComparer.OrdinalIgnoreCase);
     public const string FaceLayer = "WIFIHEAT_CARAS";
 
     public Dictionary<string, (string Layer, List<Segment2> Segments)> Lines { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> ClosedLines { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, ClosedFigure> Figures { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, List<FaceSegment>> Faces { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, Polygon2> Polylines { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<ValidationIssue> HostIssues { get; } = [];
@@ -39,6 +44,20 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
 
     public void Add(string handle, double ax, double ay, double bx, double by, string? material = null, double? thickness = null) =>
         Walls[handle] = new Wall(handle, [new Segment2(new Vec2(ax, ay), new Vec2(bx, by))], material, thickness);
+
+    public void AddFigure(string handle, string kind, double x, double y, double width, double height) =>
+        Figures[handle] = new ClosedFigure(handle, kind, Polygon2.Rectangle(new BoundingBox(new Vec2(x, y), new Vec2(x + width, y + height))), null);
+
+    public void AddClosedPolyline(string layer, string handle, double x, double y, double width, double height)
+    {
+        Lines[handle] = (layer, [.. Polygon2.Rectangle(new BoundingBox(new Vec2(x, y), new Vec2(x + width, y + height))).Edges()]);
+        ClosedLines.Add(handle);
+    }
+
+    public void AddBrokenFigure(string handle, string kind, string error) => Figures[handle] = new ClosedFigure(handle, kind, null, error);
+
+    public void AddColumn(string handle, double x, double y, double side, Reinforcement level, string? material = "concrete") =>
+        Walls[handle] = Wall.Column(handle, Polygon2.Rectangle(new BoundingBox(new Vec2(x, y), new Vec2(x + side, y + side))), material, level);
 
     public void AddLine(string layer, string handle, double ax, double ay, double bx, double by) =>
         Lines[handle] = (layer, [new Segment2(new Vec2(ax, ay), new Vec2(bx, by))]);
@@ -112,10 +131,45 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
         foreach (string handle in handles)
         {
             if (Walls.TryGetValue(handle, out Wall? wall)) result.Add(new EntityFaces(wall.Id, WallLayer, true, wall.Segments));
-            else if (Lines.TryGetValue(handle, out var line)) result.Add(new EntityFaces(handle, line.Layer, false, line.Segments));
+            else if (Lines.TryGetValue(handle, out var line)) result.Add(new EntityFaces(handle, line.Layer, false, line.Segments, ClosedLines.Contains(handle)));
         }
 
         return result;
+    }
+
+    protected override IReadOnlyList<ClosedFigure> ReadClosedFigures(IReadOnlyCollection<string> handles)
+    {
+        var result = new List<ClosedFigure>();
+        foreach (string handle in handles)
+        {
+            if (Figures.TryGetValue(handle, out ClosedFigure? figure)) result.Add(figure);
+            else if (Walls.TryGetValue(handle, out Wall? wall)) result.Add(new ClosedFigure(wall.Id, "LWPOLYLINE", wall.Footprint(), wall.Footprint() is null ? "no está cerrada" : null, wall.IsColumn));
+            else if (Lines.ContainsKey(handle)) result.Add(new ClosedFigure(handle, "LINE", null, "no es un hatch ni una polilínea cerrada"));
+        }
+
+        return result;
+    }
+
+    protected override IReadOnlyList<ClosedFigure> ReadClosedFigures(BoundingBox windowM) =>
+        [.. Figures.Values.Where(f => f.Polygon is { } p &&
+            p.Bounds.Min.X >= windowM.Min.X && p.Bounds.Min.Y >= windowM.Min.Y && p.Bounds.Max.X <= windowM.Max.X && p.Bounds.Max.Y <= windowM.Max.Y)];
+
+    protected override IReadOnlyList<string> WriteColumns(IReadOnlyList<NewColumn> create, IReadOnlyList<ColumnUpdate> update)
+    {
+        foreach (ColumnUpdate u in update)
+        {
+            if (Walls.TryGetValue(u.Handle, out Wall? wall)) Walls[u.Handle] = wall with { MaterialId = u.MaterialId, Reinforcement = u.Reinforcement };
+        }
+
+        var handles = new List<string>();
+        foreach (NewColumn column in create)
+        {
+            string handle = $"C{_nextHandle++}";
+            Walls[handle] = Wall.Column(handle, column.Footprint, column.MaterialId, column.Reinforcement);
+            handles.Add(handle);
+        }
+
+        return handles;
     }
 
     protected override IReadOnlyList<string> CreateAxes(IReadOnlyList<NewAxis> axes)

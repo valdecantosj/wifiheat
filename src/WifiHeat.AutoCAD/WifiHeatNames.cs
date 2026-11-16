@@ -16,4 +16,5 @@ public static class WifiHeatNames
 
     public const string WallTag = "WALL";
     public const string AccessPointTag = "AP";
+    public const string ColumnTag = "COLUMN";
 }

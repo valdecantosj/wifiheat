@@ -20,6 +20,8 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
     private const string MissingUnit = "El dibujo no tiene unidad guardada. Ejecutar WIFISETUP.";
     private const string NoFacesInWindow = "No hay líneas ni polilíneas enteras dentro de la zona de la planta.";
 
+    private static readonly System.Globalization.CultureInfo Es = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+
     private DrawingContents _drawingContents = new([], []);
 
     public SimulationSession Session { get; } = session;
@@ -67,7 +69,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         }
 
         _drawingContents = contents;
-        return [.. contents.Walls.Select(w => new WallInfo(w.Wall.Id, w.Wall.Segments.Sum(s => s.Length), w.Layer, w.Wall.MaterialId, w.Wall.ThicknessM))];
+        return [.. contents.Walls.Select(w => new WallInfo(w.Wall.Id, w.Wall.Segments.Sum(s => s.Length), w.Layer, w.Wall.MaterialId, w.Wall.ThicknessM, w.Wall.Reinforcement, w.Wall.IsColumn))];
     }
 
     public ValidationSummary Validate()
@@ -156,6 +158,94 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         return result.WallCount == 0
             ? new OperationResult<FaceJoin>(result, ["Ninguna de las entidades elegidas existe en el dibujo."], warnings)
             : OperationResult<FaceJoin>.Ok(result, warnings);
+    }
+
+    public ColumnReinforcement ColumnReinforcement => Session.Catalog.Columns;
+
+    public OperationResult<ColumnGeneration> AssignColumns(IReadOnlyCollection<string> handles, Reinforcement reinforcement)
+    {
+        const string unchanged = "No se generó ninguna columna.";
+        if (handles.Count == 0) return OperationResult<ColumnGeneration>.Fail("No se eligió ninguna figura.");
+        if (!Enum.IsDefined(reinforcement)) return OperationResult<ColumnGeneration>.Fail($"Nivel de armadura desconocido. {unchanged}");
+        if (ReadSetup().Unit is null) return OperationResult<ColumnGeneration>.Fail(MissingUnit);
+
+        ColumnReinforcement columns = Session.Catalog.Columns;
+        if (!Session.Catalog.TryGet(columns.MaterialId, out Material material))
+        {
+            return OperationResult<ColumnGeneration>.Fail($"El catálogo no tiene el material de las columnas ('{columns.MaterialId}'). {unchanged}");
+        }
+
+        LoadWalls();
+        string[] chosen = Distinct(handles);
+        IReadOnlyList<ClosedFigure> figures = ReadClosedFigures(chosen);
+        List<(string Handle, Polygon2 Footprint)> existing = ExistingColumns();
+
+        var create = new List<NewColumn>();
+        var update = new List<ColumnUpdate>();
+        var accepted = new List<Polygon2>();
+        var tooLarge = new List<string>();
+        var invalid = new List<string>();
+        int kept = 0, duplicates = 0;
+        foreach (ClosedFigure figure in figures)
+        {
+            if (figure.IsColumn)
+            {
+                if (Touch(figure.Handle)) kept++;
+                continue;
+            }
+
+            if (figure.Polygon is not { } polygon)
+            {
+                invalid.Add($"{figure.Handle} ({figure.Kind}: {figure.Error ?? "no es una figura cerrada"})");
+                continue;
+            }
+
+            if (!ColumnRules.IsSmall(polygon))
+            {
+                tooLarge.Add(figure.Handle);
+                continue;
+            }
+
+            if (accepted.Any(p => ColumnRules.SameFootprint(p, polygon)))
+            {
+                duplicates++;
+                continue;
+            }
+
+            accepted.Add(polygon);
+            string? match = existing.FirstOrDefault(c => ColumnRules.SameFootprint(c.Footprint, polygon)).Handle;
+            if (match is null) create.Add(new NewColumn(polygon, material.Id, reinforcement));
+            else if (Touch(match)) kept++;
+            else duplicates++;
+        }
+
+        var warnings = new List<string>();
+        string[] notFound = [.. chosen.Where(h => !figures.Any(f => string.Equals(f.Handle, h, StringComparison.OrdinalIgnoreCase)))];
+        if (notFound.Length > 0) warnings.Add($"No se encontraron en el dibujo: {string.Join(", ", notFound)}.");
+        if (tooLarge.Count > 0)
+        {
+            warnings.Add(string.Create(Es, $"No parece una columna (más de {ColumnRules.MaxSideM:0.#} m de lado), no se generó: {string.Join(", ", tooLarge)}."));
+        }
+
+        if (invalid.Count > 0) warnings.Add($"{ValidationIssue.InvalidGeometry}: {string.Join("; ", invalid)}.");
+
+        if (create.Count == 0 && update.Count == 0)
+        {
+            return new OperationResult<ColumnGeneration>(null, [.. warnings, unchanged], []);
+        }
+
+        IReadOnlyList<string> created = WriteColumns(create, update);
+        LoadWalls();
+        return OperationResult<ColumnGeneration>.Ok(new ColumnGeneration(
+            created.Count, kept, duplicates, reinforcement, columns.AdditionalLossDb(reinforcement),
+            [.. created, .. update.Select(u => u.Handle)], tooLarge, invalid), warnings);
+
+        bool Touch(string handle)
+        {
+            if (update.Any(u => string.Equals(u.Handle, handle, StringComparison.OrdinalIgnoreCase))) return false;
+            update.Add(new ColumnUpdate(handle, material.Id, reinforcement));
+            return true;
+        }
     }
 
     public IReadOnlyList<ParallelWallsInfo> FindParallelWalls()
@@ -247,7 +337,10 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         if (detection.Axes.Count == 0)
         {
             return OperationResult<AxisGeneration>.Ok(
-                new AxisGeneration(chosen.Count, 0, 0, 0, 0, 0, 0, mergeGapM, detection.Unpaired, detection.PartlyUnpaired),
+                new AxisGeneration(chosen.Count, 0, 0, 0, 0, 0, 0, mergeGapM, detection.Unpaired, detection.PartlyUnpaired)
+                {
+                    SmallClosedFigures = PossibleColumns(ReadClosedFigures(windowM)),
+                },
                 ["No se encontró ningún par de caras paralelas; el dibujo no se modificó."]);
         }
 
@@ -273,7 +366,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         return OperationResult<AxisGeneration>.Ok(new AxisGeneration(
             chosen.Count, detection.Axes.Count, create.Count, kept, previous.Count,
             detection.Axes.Min(a => a.ThicknessM), detection.Axes.Max(a => a.ThicknessM), mergeGapM,
-            detection.Unpaired, detection.PartlyUnpaired));
+            detection.Unpaired, detection.PartlyUnpaired) { SmallClosedFigures = PossibleColumns(ReadClosedFigures(windowM)) });
     }
 
     public OperationResult<AccessPointInfo> SetAccessPoint(Vec2 positionM)
@@ -423,7 +516,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         var points = Session.Walls.SelectMany(w => w.Segments).SelectMany(s => new[] { s.A, s.B }).ToList();
         BoundingBox? bounds = points.Count > 0 ? BoundingBox.FromPoints(points) : null;
         return new ValidationSummary(Session.Walls.Count, report.ErrorCount, report.WarningCount, bounds,
-            [.. report.Issues.Select(i => new ValidationItem(i.Severity, i.Code, i.EntityRef, i.Message))]);
+            [.. report.Issues.Select(i => new ValidationItem(i.Severity, i.Code, i.EntityRef, i.Message))], Session.Walls.Count(w => w.IsColumn));
     }
 
     private OperationResult<CoverageAreaInfo> ChangeCoverageArea(string? handle)
@@ -459,8 +552,36 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     private static string[] Distinct(IReadOnlyCollection<string> handles) => [.. handles.Distinct(StringComparer.OrdinalIgnoreCase)];
 
+    /// <summary>Las figuras cerradas pequeñas (posibles columnas) no se usan como caras.</summary>
     private static FacePairs PairsAmongNewEntities(IReadOnlyList<EntityFaces> entities) =>
-        FacePairing.Detect([.. entities.Where(e => !e.IsWall).Select(e => new FaceEntity(e.Handle, e.Segments))]);
+        FacePairing.Detect([.. entities
+            .Where(e => !e.IsWall && ColumnRules.SmallClosedFigure(e.Segments, e.Closed) is null)
+            .Select(e => new FaceEntity(e.Handle, e.Segments))]);
+
+    private List<(string Handle, Polygon2 Footprint)> ExistingColumns() =>
+        [.. _drawingContents.Walls
+            .Where(w => w.Wall.IsColumn)
+            .Select(w => (w.Wall.Id, Footprint: w.Wall.Footprint()))
+            .Where(c => c.Footprint is not null)
+            .Select(c => (c.Id, c.Footprint!))];
+
+    /// <summary>Un handle por cada contorno pequeño distinto que todavía no es una columna.</summary>
+    private List<string> PossibleColumns(IEnumerable<ClosedFigure> figures)
+    {
+        List<(string Handle, Polygon2 Footprint)> existing = ExistingColumns();
+        var seen = new List<Polygon2>();
+        var handles = new List<string>();
+        foreach (ClosedFigure figure in figures)
+        {
+            if (figure.IsColumn || figure.Polygon is not { } polygon || !ColumnRules.IsSmall(polygon)) continue;
+            if (seen.Any(p => ColumnRules.SameFootprint(p, polygon))) continue;
+
+            seen.Add(polygon);
+            if (!existing.Any(c => ColumnRules.SameFootprint(c.Footprint, polygon))) handles.Add(figure.Handle);
+        }
+
+        return handles;
+    }
 
     /// <summary>Muro de un solo tramo que ya ocupa ese eje, sin contar los indicados.</summary>
     private string? ExistingAxis(Segment2 axis, IReadOnlyList<string> except) =>
@@ -496,6 +617,8 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
             p.First.Wall.Id == p.Second.Wall.Id &&
             p.First.Wall.MaterialId == p.Second.Wall.MaterialId &&
             p.First.Wall.ThicknessM == p.Second.Wall.ThicknessM &&
+            p.First.Wall.Kind == p.Second.Wall.Kind &&
+            p.First.Wall.Reinforcement == p.Second.Wall.Reinforcement &&
             p.First.Wall.Segments.SequenceEqual(p.Second.Wall.Segments));
 
     protected abstract DrawingSetup ReadSetup();
@@ -520,6 +643,21 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     /// <summary>Quita la condición de muro a esas entidades y las pasa a la capa neutra de caras.</summary>
     protected abstract void RetireFaces(IReadOnlyList<string> handles);
+
+    /// <summary>
+    /// Hatches, polilíneas cerradas y columnas con esos handles, con su contorno en metros.
+    /// Un hatch con arcos o con más de un bucle, o una entidad de otro tipo, vuelve sin contorno y con el motivo.
+    /// </summary>
+    protected abstract IReadOnlyList<ClosedFigure> ReadClosedFigures(IReadOnlyCollection<string> handles);
+
+    /// <summary>Hatches y polilíneas cerradas enteros dentro de la zona, fuera de las capas propias.</summary>
+    protected abstract IReadOnlyList<ClosedFigure> ReadClosedFigures(BoundingBox windowM);
+
+    /// <summary>
+    /// Crea una polilínea cerrada por columna en la capa de muros, con material, armadura y marca de generada,
+    /// y actualiza las columnas indicadas. Devuelve los handles nuevos, en el mismo orden.
+    /// </summary>
+    protected abstract IReadOnlyList<string> WriteColumns(IReadOnlyList<NewColumn> create, IReadOnlyList<ColumnUpdate> update);
 
     /// <summary>Guarda la polilínea como área de cobertura (null la quita) y devuelve lo guardado, o el motivo del rechazo.</summary>
     protected abstract OperationResult<CoverageAreaRead> WriteCoverageArea(string? polylineHandle);

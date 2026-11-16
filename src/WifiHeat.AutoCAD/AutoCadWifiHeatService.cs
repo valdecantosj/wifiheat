@@ -148,11 +148,71 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
             if (!TryOpen(tr, handle, out Entity? entity) || entity is not (Line or Polyline)) continue;
 
             bool isWall = string.Equals(entity.Layer, WifiHeatNames.WallLayer, StringComparison.OrdinalIgnoreCase);
-            result.Add(new EntityFaces(entity.Handle.ToString(), entity.Layer, isWall, FaceReader.StraightSegments(unit, (Curve)entity)));
+            bool closed = entity is Polyline polyline && ColumnReader.IsClosed(polyline, unit);
+            result.Add(new EntityFaces(entity.Handle.ToString(), entity.Layer, isWall, FaceReader.StraightSegments(unit, (Curve)entity), closed));
         }
 
         tr.Commit();
         return result;
+    }
+
+    protected override IReadOnlyList<ClosedFigure> ReadClosedFigures(IReadOnlyCollection<string> handles)
+    {
+        var result = new List<ClosedFigure>();
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        foreach (string handle in handles)
+        {
+            if (TryOpen(tr, handle, out Entity? entity)) result.Add(ColumnReader.Read(entity!, unit));
+        }
+
+        tr.Commit();
+        return result;
+    }
+
+    protected override IReadOnlyList<ClosedFigure> ReadClosedFigures(BoundingBox windowM)
+    {
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        IReadOnlyList<ClosedFigure> figures = ColumnReader.ReadInside(Db, tr, DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres, windowM);
+        tr.Commit();
+        return figures;
+    }
+
+    protected override IReadOnlyList<string> WriteColumns(IReadOnlyList<NewColumn> create, IReadOnlyList<ColumnUpdate> update)
+    {
+        var handles = new List<string>(create.Count);
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        DrawingStore.EnsureAll(Db, tr);
+        foreach (ColumnUpdate column in update)
+        {
+            if (!TryOpen(tr, column.Handle, out Entity? entity)) continue;
+
+            entity!.UpgradeOpen();
+            WifiXData.WriteColumn(entity, column.MaterialId, column.Reinforcement);
+        }
+
+        BlockTableRecord modelSpace = ModelSpace.Open(Db, tr, OpenMode.ForWrite);
+        foreach (NewColumn column in create)
+        {
+            var outline = new Polyline { Layer = WifiHeatNames.WallLayer };
+            for (int i = 0; i < column.Footprint.Vertices.Count; i++)
+            {
+                Autodesk.AutoCAD.Geometry.Point3d p = ModelSpace.ToDrawing(unit, column.Footprint.Vertices[i]);
+                outline.AddVertexAt(i, new Autodesk.AutoCAD.Geometry.Point2d(p.X, p.Y), 0, 0, 0);
+            }
+
+            outline.Closed = true;
+            ModelSpace.Add(modelSpace, tr, outline);
+            WifiXData.WriteColumn(outline, column.MaterialId, column.Reinforcement, generated: true);
+            handles.Add(outline.Handle.ToString());
+        }
+
+        tr.Commit();
+        return handles;
     }
 
     protected override IReadOnlyList<string> CreateAxes(IReadOnlyList<NewAxis> axes)

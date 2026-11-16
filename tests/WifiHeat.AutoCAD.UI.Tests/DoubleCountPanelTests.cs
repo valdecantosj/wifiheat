@@ -143,7 +143,7 @@ public class DoubleCountPanelTests
         Assert.Equal("brick", axis.MaterialId);
         Assert.Equal(FakeDrawing.FaceLayer, s.Drawing.Lines["F1"].Layer);
         Assert.False(s.Panel.Validation.HasDoubleCount);
-        Assert.Equal(1, s.Panel.Walls.Rows.Count);
+        Assert.Single(s.Panel.Walls.Rows);
         Assert.Equal(StatusKind.Success, s.Panel.Messages.Kind);
         Assert.Equal("1 eje creado en lugar de las dos caras", s.Panel.Messages.Current!.Title);
     }
