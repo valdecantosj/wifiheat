@@ -116,30 +116,65 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         if (AccessPoint is null) return OperationResult<RssiGrid>.Fail("Falta ubicar el AP (WIFIADDAP).");
         if (AccessPointInsideColumn() is { } inside) return OperationResult<RssiGrid>.Fail(inside);
 
+        (GridPlan? plan, string? error) = PlanGrid(CoverageArea, CellSizeM);
+        if (plan is null) return OperationResult<RssiGrid>.Fail(error!);
+
+        LastGrid = GridCalculator.Calculate(_scene, AccessPoint, Settings, plan.Spec, plan.Area);
+        return OperationResult<RssiGrid>.Ok(LastGrid, plan.Warnings);
+    }
+
+    /// <summary>
+    /// Mapa de la pérdida que agrega la armadura de las columnas. No cambia el último cálculo ni la configuración de la sesión:
+    /// usa la resolución de la sesión o 0,20 m, la menor. Map es null si ninguna columna tiene armadura.
+    /// El área es la de cobertura indicada (null = rectángulo de los muros).
+    /// </summary>
+    public OperationResult<ReinforcementEffectResult> CalculateReinforcementEffect(Polygon2? area)
+    {
+        if (Validation is null) return OperationResult<ReinforcementEffectResult>.Fail("Primero validar el plano (WIFIVALIDATE).");
+        if (_scene is null) return OperationResult<ReinforcementEffectResult>.Fail($"El plano tiene {Validation.ErrorCount} error(es) de validación. Corregirlos y validar de nuevo.");
+
+        double cellSize = ReinforcementEffect.CellSizeFor(CellSizeM);
+        var lowered = cellSize < CellSizeM;
+        if (!_scene.HasReinforcement) return OperationResult<ReinforcementEffectResult>.Ok(new ReinforcementEffectResult(null, cellSize, lowered, 0));
+        if (AccessPoint is null) return OperationResult<ReinforcementEffectResult>.Fail("Falta ubicar el AP (WIFIADDAP).");
+        if (AccessPointInsideColumn() is { } inside) return OperationResult<ReinforcementEffectResult>.Fail(inside);
+
+        (GridPlan? plan, string? error) = PlanGrid(area, cellSize);
+        if (plan is null) return OperationResult<ReinforcementEffectResult>.Fail(error!);
+
+        ReinforcementEffectMap? map = ReinforcementEffect.Calculate(_scene, AccessPoint, Settings, plan.Spec, plan.Area);
+        return OperationResult<ReinforcementEffectResult>.Ok(new ReinforcementEffectResult(map, cellSize, lowered, _scene.ReinforcedColumnCount), plan.Warnings);
+    }
+
+    private sealed record GridPlan(Polygon2 Area, GridSpec Spec, IReadOnlyList<string> Warnings);
+
+    /// <summary>Área y grilla a calcular, o el motivo por el que no se puede.</summary>
+    private (GridPlan? Plan, string? Error) PlanGrid(Polygon2? coverageArea, double cellSizeM)
+    {
         Polygon2 area;
-        if (CoverageArea is not null)
+        if (coverageArea is not null)
         {
-            area = CoverageArea;
+            area = coverageArea;
         }
         else
         {
-            BoundingBox walls = _scene.Bounds();
+            BoundingBox walls = _scene!.Bounds();
             if (walls.Width < MinAreaSideM || walls.Height < MinAreaSideM)
             {
-                return OperationResult<RssiGrid>.Fail("Los muros no encierran superficie (todos alineados). Definir el área de cobertura con WIFIAREA.");
+                return (null, "Los muros no encierran superficie (todos alineados). Definir el área de cobertura con WIFIAREA.");
             }
 
             area = Polygon2.Rectangle(walls);
         }
 
         BoundingBox bounds = area.Bounds;
-        if (bounds.Width / CellSizeM * (bounds.Height / CellSizeM) > GridSpec.MaxGridCells)
+        if (bounds.Width / cellSizeM * (bounds.Height / cellSizeM) > GridSpec.MaxGridCells)
         {
-            return OperationResult<RssiGrid>.Fail(FormattableString.Invariant(
+            return (null, FormattableString.Invariant(
                 $"{ValidationIssue.LargeArea}: el área a calcular mide {bounds.Width:0.#} × {bounds.Height:0.#} m y supera el máximo de {GridSpec.MaxGridCells} celdas. Revisar la unidad del dibujo, el área de cobertura o los muros alejados."));
         }
 
-        GridSpec spec = GridSpec.Cover(bounds, CellSizeM);
+        GridSpec spec = GridSpec.Cover(bounds, cellSizeM);
 
         var warnings = new List<string>();
         if (spec.CellCount > GridSpec.LargeGridWarningCells)
@@ -148,8 +183,7 @@ public sealed class SimulationSession(MaterialCatalog catalog)
                          "Revisar unidades del plano o usar una resolución mayor.");
         }
 
-        LastGrid = GridCalculator.Calculate(_scene, AccessPoint, Settings, spec, area);
-        return OperationResult<RssiGrid>.Ok(LastGrid, warnings);
+        return (new GridPlan(area, spec, warnings), null);
     }
 
     /// <summary>Consulta en el punto exacto indicado (no el centro de celda).</summary>
@@ -173,3 +207,6 @@ public sealed class SimulationSession(MaterialCatalog catalog)
             ? $"El AP está dentro de la columna {column.Wall.Id}: no se calcula. Ubicarlo fuera de la columna."
             : null;
 }
+
+/// <summary>Map null: ninguna columna tiene armadura. CellSizeM: la celda usada; ResolutionLowered: la de la sesión era mayor.</summary>
+public sealed record ReinforcementEffectResult(ReinforcementEffectMap? Map, double CellSizeM, bool ResolutionLowered, int ReinforcedColumns);

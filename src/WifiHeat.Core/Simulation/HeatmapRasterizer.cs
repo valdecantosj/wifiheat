@@ -41,7 +41,17 @@ public static class HeatmapRasterizer
     public static HeatmapImage Render(RssiGrid grid, byte alpha = OpaqueAlpha) =>
         Render(grid, PixelSizeFor(grid.Spec, grid.Area.Bounds), alpha);
 
-    public static HeatmapImage Render(RssiGrid grid, double pixelSizeM, byte alpha)
+    public static HeatmapImage Render(RssiGrid grid, double pixelSizeM, byte alpha) =>
+        RenderCore(grid, pixelSizeM, alpha, SignalScale.RampColor, missingAsZero: false, visibleFrom: double.NegativeInfinity);
+
+    /// <summary>
+    /// Imagen del mapa de efecto de la armadura. Las celdas sin valor cuentan como 0 dB al interpolar y los píxeles
+    /// por debajo de <see cref="EffectScale.VisibleThresholdDb"/> quedan transparentes.
+    /// </summary>
+    public static HeatmapImage RenderEffect(RssiGrid grid, EffectScale scale, byte alpha = OpaqueAlpha) =>
+        RenderCore(grid, PixelSizeFor(grid.Spec, grid.Area.Bounds), alpha, scale.Color, missingAsZero: true, visibleFrom: EffectScale.VisibleThresholdDb);
+
+    private static HeatmapImage RenderCore(RssiGrid grid, double pixelSizeM, byte alpha, Func<double, Rgb> ramp, bool missingAsZero, double visibleFrom)
     {
         if (pixelSizeM <= 0) throw new ArgumentOutOfRangeException(nameof(pixelSizeM));
 
@@ -58,10 +68,10 @@ public static class HeatmapRasterizer
                 var p = new Vec2(extent.Min.X + (x + 0.5) * pixelSizeM, yM);
                 if (!grid.Area.Contains(p)) continue;
 
-                double value = Sample(grid, p);
-                if (double.IsNaN(value)) continue;
+                double value = Sample(grid, p, missingAsZero);
+                if (double.IsNaN(value) || value < visibleFrom) continue;
 
-                Rgb color = SignalScale.RampColor(value);
+                Rgb color = ramp(value);
                 int i = (y * width + x) * 4;
                 bgra[i] = color.B;
                 bgra[i + 1] = color.G;
@@ -77,7 +87,7 @@ public static class HeatmapRasterizer
     /// Interpolación bilineal entre centros de celda. Las celdas sin valor se ignoran y los pesos se renormalizan;
     /// fuera de la grilla se toma el borde. NaN si ninguna de las cuatro celdas vecinas tiene valor.
     /// </summary>
-    public static double Sample(RssiGrid grid, Vec2 p)
+    public static double Sample(RssiGrid grid, Vec2 p, bool missingAsZero = false)
     {
         GridSpec spec = grid.Spec;
         double fx = Math.Clamp((p.X - spec.Origin.X) / spec.CellSizeM - 0.5, 0, spec.Columns - 1);
@@ -98,8 +108,8 @@ public static class HeatmapRasterizer
 
         void Add(int c, int r, double w)
         {
-            if (!grid.HasValue(c, r)) return;
-            double v = grid[c, r];
+            if (!grid.HasValue(c, r) && !missingAsZero) return;
+            double v = grid.HasValue(c, r) ? grid[c, r] : 0;
             sum += v * w;
             weights += w;
             plain += v;

@@ -34,9 +34,20 @@ public sealed class SimulationScene
         Walls = resolved;
     }
 
+    private SimulationScene(IReadOnlyList<ResolvedWall> walls) => Walls = walls;
+
     public IReadOnlyList<ResolvedWall> Walls { get; }
 
     public bool HasColumns => Walls.Any(w => w.Wall.IsColumn);
+
+    /// <summary>True si alguna columna suma un adicional de armadura mayor que cero.</summary>
+    public bool HasReinforcement => Walls.Any(w => w.AdditionalLossDb > 0);
+
+    /// <summary>Cantidad de columnas que suman un adicional de armadura.</summary>
+    public int ReinforcedColumnCount => Walls.Count(w => w.AdditionalLossDb > 0);
+
+    /// <summary>La misma escena con las columnas como hormigón sin armadura.</summary>
+    public SimulationScene WithoutReinforcement() => new([.. Walls.Select(w => w with { AdditionalLossDb = 0 })]);
 
     public BoundingBox Bounds() => BoundingBox.FromPoints(Walls.SelectMany(w => w.Wall.Segments).SelectMany(s => new[] { s.A, s.B }));
 
