@@ -56,6 +56,8 @@ Cada muro se dibuja como un eje (una línea o polilínea de tramos rectos por mu
 
 Los valores se confirman con Enter o al salir del campo. Si AutoCAD está ejecutando otro comando, el panel lo avisa y no modifica el dibujo hasta que termine.
 
+Mientras el panel espera algo en el dibujo, arriba se ve un aviso fijo con el modo (por ejemplo, «MODO: UBICAR PUNTO DE ACCESO»), la instrucción y el botón «CANCELAR (ESC)». El resultado de cada acción aparece al pie: ✖ error, ⚠ advertencia, ✔ éxito o ℹ información, con un título corto y el detalle. Los errores y advertencias quedan hasta cerrarlos o hasta la acción siguiente. El historial plegable guarda los últimos 50 mensajes y se puede copiar.
+
 ## Probar con el ejemplo
 
 `samples/demo.dwg` es una planta sintética de 30 × 14 m con seis ambientes: muros exteriores de hormigón (0,25 m); muros interiores de ladrillo macizo (0,20 m) en x = 10 m y en y = 7 m desde x = 20 m, de ladrillo hueco (0,15 m) en x = 20 m y de placa de yeso (0,10 m) en y = 7 m entre x = 0 y x = 20 m. El punto de acceso está en (2; 3) m, en 5 GHz con 20 dBm. Todo está ya asignado.
