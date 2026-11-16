@@ -30,4 +30,18 @@
   <SolidColorBrush x:Key="Scroll.Thumb" Color="#66718A" />
   <SolidColorBrush x:Key="Scroll.ThumbHover" Color="#8590A8" />
   <SolidColorBrush x:Key="Swatch.Border" Color="#20242C" />
+  <SolidColorBrush x:Key="Mode.Background" Color="#5B4BD8" />
+  <SolidColorBrush x:Key="Mode.Foreground" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Mode.Instruction" Color="#E4E1FF" />
+  <SolidColorBrush x:Key="Mode.Button" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Mode.ButtonHover" Color="#E4E1FF" />
+  <SolidColorBrush x:Key="Mode.ButtonText" Color="#3730A3" />
+  <SolidColorBrush x:Key="Message.Error.Background" Color="#4A2326" />
+  <SolidColorBrush x:Key="Message.Error.Accent" Color="#FF8A80" />
+  <SolidColorBrush x:Key="Message.Warning.Background" Color="#463A1B" />
+  <SolidColorBrush x:Key="Message.Warning.Accent" Color="#F2C14E" />
+  <SolidColorBrush x:Key="Message.Success.Background" Color="#1E3D27" />
+  <SolidColorBrush x:Key="Message.Success.Accent" Color="#7BD88F" />
+  <SolidColorBrush x:Key="Message.Info.Background" Color="#1E3858" />
+  <SolidColorBrush x:Key="Message.Info.Accent" Color="#8CC0FF" />
 </ResourceDictionary>

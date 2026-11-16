@@ -84,6 +84,8 @@ public sealed class MessageCenter : ObservableObject
 
     public string HistoryText => string.Join(Environment.NewLine, History);
 
+    public string HistorySummary => History.Count == 1 ? "1 mensaje" : $"{History.Count} mensajes";
+
     public RelayCommand DismissCommand { get; }
 
     public RelayCommand ClearHistoryCommand { get; }
@@ -93,8 +95,7 @@ public sealed class MessageCenter : ObservableObject
         var message = new PanelMessage(_clock(), kind, title.Trim(), detail.Trim());
         History.Insert(0, message);
         while (History.Count > HistoryLimit) History.RemoveAt(History.Count - 1);
-        OnPropertyChanged(nameof(HasHistory));
-        OnPropertyChanged(nameof(HistoryText));
+        OnHistoryChanged();
         Current = message;
     }
 
@@ -110,8 +111,14 @@ public sealed class MessageCenter : ObservableObject
     public void ClearHistory()
     {
         History.Clear();
+        OnHistoryChanged();
+    }
+
+    private void OnHistoryChanged()
+    {
         OnPropertyChanged(nameof(HasHistory));
         OnPropertyChanged(nameof(HistoryText));
+        OnPropertyChanged(nameof(HistorySummary));
     }
 }
 

@@ -4,6 +4,9 @@
              FontFamily="Segoe UI" FontSize="12" MinWidth="280"
              Background="{DynamicResource Panel.Background}" Foreground="{DynamicResource Panel.Foreground}"
              UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <UserControl.InputBindings>
+    <KeyBinding Key="Escape" Command="{Binding CancelModeCommand}" />
+  </UserControl.InputBindings>
   <UserControl.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -21,7 +24,9 @@
     <Grid x:Name="Body" Visibility="Collapsed">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
@@ -39,7 +44,22 @@
         </DockPanel>
       </Border>
 
-      <ScrollViewer x:Name="Scroller" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+      <!-- Modo activo: fijo, fuera del desplazamiento -->
+      <Border x:Name="ModeBanner" Grid.Row="1" Background="{DynamicResource Mode.Background}" Padding="10,8"
+              Visibility="{Binding IsInteracting, Converter={StaticResource Visible}}"
+              AutomationProperties.LiveSetting="Assertive" AutomationProperties.Name="{Binding ActiveMode.Title}"
+              AutomationProperties.HelpText="{Binding ActiveMode.Instruction}">
+        <StackPanel>
+          <TextBlock Text="{Binding ActiveMode.Title}" Foreground="{DynamicResource Mode.Foreground}" FontSize="15" FontWeight="Bold" TextWrapping="Wrap" />
+          <DockPanel Margin="0,4,0,0">
+            <Button DockPanel.Dock="Right" Style="{StaticResource ModeButton}" Margin="8,0,0,0" VerticalAlignment="Center" Content="CANCELAR (ESC)"
+                    Command="{Binding CancelModeCommand}" ToolTip="Cancela la pregunta en el dibujo, como Esc." />
+            <TextBlock Text="{Binding ActiveMode.Instruction}" Foreground="{DynamicResource Mode.Instruction}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </DockPanel>
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer x:Name="Scroller" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
         <StackPanel x:Name="Sections" Margin="8,8,8,0">
 
           <!-- 1 · Preparar plano -->
@@ -68,13 +88,15 @@
 
               <Border Style="{StaticResource Rule}" />
               <TextBlock Style="{StaticResource SubHeading}" Text="Ejes de muros dibujados con dos caras" />
-              <DockPanel>
-                <Button DockPanel.Dock="Left" Content="Elegir _zona de la planta…" Command="{Binding PickWindowCommand}"
+              <WrapPanel>
+                <Button Content="Elegir _zona de la planta…" Command="{Binding PickWindowCommand}" Margin="0,0,12,4"
                         ToolTip="Marcá con dos clics el rectángulo que encierra una sola planta." />
-                <TextBox DockPanel.Dock="Right" Width="52" Text="{Binding MergeGapText}" AutomationProperties.Name="Umbral de unión en metros"
-                         ToolTip="Los tramos alineados separados hasta esta distancia se unen: las aberturas más angostas se cierran." />
-                <TextBlock Style="{StaticResource FieldLabel}" Text="Unir tramos hasta (m)" HorizontalAlignment="Right" TextAlignment="Right" Margin="8,0,6,0" />
-              </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="Unir tramos hasta (m)" Margin="0,0,6,0" />
+                  <TextBox Width="52" Text="{Binding MergeGapText}" AutomationProperties.Name="Umbral de unión en metros"
+                           ToolTip="Los tramos alineados separados hasta esta distancia se unen: las aberturas más angostas se cierran." />
+                </StackPanel>
+              </WrapPanel>
               <TextBlock Style="{StaticResource EmptyState}" Text="Marcá con dos clics el rectángulo que encierra una sola planta para ver sus capas."
                          Visibility="{Binding HasWindow, Converter={StaticResource Hidden}}" />
               <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,2" Text="{Binding WindowText}"
@@ -623,12 +645,8 @@
         </StackPanel>
       </ScrollViewer>
 
-      <!-- Esperando al usuario u ocupado -->
-      <Border Grid.Row="2" Background="{DynamicResource Banner.Background}" Padding="10,6"
-              Visibility="{Binding IsInteracting, Converter={StaticResource Visible}}">
-        <TextBlock TextWrapping="Wrap" Text="{Binding ActiveMode.Instruction}" />
-      </Border>
-      <Border Grid.Row="2" Background="{DynamicResource Banner.Background}" Padding="10,6"
+      <!-- Ocupado -->
+      <Border Grid.Row="3" Background="{DynamicResource Banner.Background}" Padding="10,6"
               Visibility="{Binding IsBusy, Converter={StaticResource Visible}}">
         <DockPanel>
           <ProgressBar DockPanel.Dock="Right" Width="70" Height="8" IsIndeterminate="True" VerticalAlignment="Center" Margin="8,0,0,0" />
@@ -636,42 +654,71 @@
         </DockPanel>
       </Border>
 
-      <!-- Estado -->
-      <Border Grid.Row="3" Background="{DynamicResource Header.Background}" Padding="10,6" MinHeight="30">
-        <DockPanel>
-          <Ellipse DockPanel.Dock="Left" Width="9" Height="9" Margin="0,3,8,0" VerticalAlignment="Top">
-            <Ellipse.Style>
-              <Style TargetType="Ellipse">
-                <Setter Property="Fill" Value="{DynamicResource Status.Info}" />
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding Messages.Kind}" Value="Error">
-                    <Setter Property="Fill" Value="{DynamicResource Status.Error}" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Messages.Kind}" Value="Warning">
-                    <Setter Property="Fill" Value="{DynamicResource Status.Warning}" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Messages.Kind}" Value="Success">
-                    <Setter Property="Fill" Value="{DynamicResource Status.Success}" />
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </Ellipse.Style>
-          </Ellipse>
-          <TextBlock x:Name="StatusText" TextWrapping="Wrap" MaxHeight="78" TextTrimming="CharacterEllipsis"
-                     ToolTip="{Binding Messages.Text}" AutomationProperties.LiveSetting="Polite">
-            <TextBlock.Style>
-              <Style TargetType="TextBlock">
-                <Setter Property="Text" Value="{Binding Messages.Text}" />
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding Messages.Text}" Value="">
-                    <Setter Property="Text" Value="Listo." />
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </TextBlock.Style>
-          </TextBlock>
-        </DockPanel>
+      <!-- Mensaje del último resultado -->
+      <Border x:Name="MessageStrip" Grid.Row="4" DataContext="{Binding Messages}" Background="{DynamicResource Header.Background}"
+              BorderBrush="{DynamicResource Card.Border}" BorderThickness="0,1,0,0" Padding="10,6" MinHeight="34">
+        <Grid>
+          <TextBlock Style="{StaticResource Muted}" VerticalAlignment="Center" Text="Sin mensajes nuevos."
+                     Visibility="{Binding HasCurrent, Converter={StaticResource Hidden}}" />
+          <Border DataContext="{Binding Current}" Style="{StaticResource MessageStrip}" BorderThickness="4,0,0,0" Margin="-10,-6" Padding="8,6,6,7"
+                  Visibility="{Binding DataContext.HasCurrent, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource Visible}}"
+                  AutomationProperties.LiveSetting="Assertive" AutomationProperties.Name="{Binding KindName}"
+                  AutomationProperties.HelpText="{Binding Text}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource CloseButton}" VerticalAlignment="Top" Margin="6,-2,0,0" Content="✕"
+                      Command="{Binding DataContext.DismissCommand, RelativeSource={RelativeSource AncestorType=Grid}}"
+                      Visibility="{Binding CanDismiss, Converter={StaticResource Visible}}"
+                      ToolTip="Cerrar el mensaje" AutomationProperties.Name="Cerrar el mensaje" />
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource MessageAccent}" Text="{Binding Icon}" FontSize="15" Width="20"
+                         Margin="0,-1,6,0" VerticalAlignment="Top" ToolTip="{Binding KindName}" />
+              <StackPanel>
+                <TextBlock Text="{Binding Title}" FontWeight="Bold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Margin="0,1,0,0"
+                           Visibility="{Binding HasDetail, Converter={StaticResource Visible}}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </Grid>
       </Border>
+
+      <!-- Historial de mensajes -->
+      <Expander x:Name="HistoryExpander" Grid.Row="5" DataContext="{Binding Messages}" Header="Historial" IsExpanded="False" Margin="0"
+                Tag="{Binding HistorySummary}">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+            <Button Content="_Copiar todo" Click="OnCopyHistory" IsEnabled="{Binding HasHistory}"
+                    ToolTip="Copia el historial al portapapeles. También se puede seleccionar texto y copiarlo con Ctrl+C." />
+            <Button Content="_Limpiar" Margin="6,0,0,0" Command="{Binding ClearHistoryCommand}" IsEnabled="{Binding HasHistory}" />
+          </StackPanel>
+          <TextBlock Style="{StaticResource EmptyState}" Margin="0" Text="Todavía no hay mensajes."
+                     Visibility="{Binding HasHistory, Converter={StaticResource Hidden}}" />
+          <ScrollViewer MaxHeight="170" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                        Visibility="{Binding HasHistory, Converter={StaticResource Visible}}">
+            <ItemsControl ItemsSource="{Binding History}" Focusable="False" AutomationProperties.Name="Historial de mensajes">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Muted}" Text="{Binding TimeText}" FontSize="11" Margin="0,1,6,0" VerticalAlignment="Top" />
+                    <TextBlock Grid.Column="1" Style="{StaticResource MessageAccent}" Text="{Binding Icon}" Width="16" VerticalAlignment="Top"
+                               ToolTip="{Binding KindName}" />
+                    <StackPanel Grid.Column="2">
+                      <TextBox Style="{StaticResource SelectableText}" FontWeight="Bold" Text="{Binding Title, Mode=OneWay}"
+                               AutomationProperties.Name="{Binding KindName}" />
+                      <TextBox Style="{StaticResource SelectableText}" Text="{Binding Detail, Mode=OneWay}"
+                               Visibility="{Binding HasDetail, Converter={StaticResource Visible}}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </StackPanel>
+      </Expander>
     </Grid>
   </Grid>
 </UserControl>

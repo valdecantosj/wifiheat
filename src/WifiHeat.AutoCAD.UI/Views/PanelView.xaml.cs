@@ -60,6 +60,20 @@ public partial class PanelView : UserControl
         });
     }
 
+    private void OnCopyHistory(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not PanelViewModel { Messages.HasHistory: true } panel) return;
+
+        try
+        {
+            Clipboard.SetText(panel.Messages.HistoryText);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            panel.Messages.Post(StatusKind.Warning, "No se pudo copiar el historial", "El portapapeles está ocupado. Probar de nuevo.");
+        }
+    }
+
     private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)

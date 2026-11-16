@@ -81,6 +81,7 @@ public class MessagesAndModeTests
         for (int i = 1; i <= 60; i++) messages.Post(StatusKind.Info, $"Mensaje {i}", i % 2 == 0 ? "Con detalle." : "");
 
         Assert.Equal(MessageCenter.HistoryLimit, messages.History.Count);
+        Assert.Equal("50 mensajes", messages.HistorySummary);
         Assert.Equal("Mensaje 60", messages.History[0].Title);
         Assert.Equal("Mensaje 11", messages.History[^1].Title);
         Assert.Equal("10:01:00", messages.History[0].TimeText);

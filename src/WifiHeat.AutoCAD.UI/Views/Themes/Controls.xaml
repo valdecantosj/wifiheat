@@ -363,6 +363,116 @@
     </Setter>
   </Style>
 
+  <!-- Banner de modo y franja de mensajes -->
+  <Style x:Key="ModeButton" TargetType="Button">
+    <Setter Property="Foreground" Value="{DynamicResource Mode.ButtonText}" />
+    <Setter Property="Background" Value="{DynamicResource Mode.Button}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource Mode.Button}" BorderThickness="2"
+                  CornerRadius="3" SnapsToDevicePixels="True">
+            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Mode.ButtonHover}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Mode.ButtonText}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="CloseButton" TargetType="Button">
+    <Setter Property="Foreground" Value="{DynamicResource Panel.Foreground}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="3">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Panel.Muted}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Accent.Hover}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Fondo y acento de un mensaje según su gravedad (DataContext: PanelMessage) -->
+  <Style x:Key="MessageAccent" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Message.Info.Accent}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Kind}" Value="Error">
+        <Setter Property="Foreground" Value="{DynamicResource Message.Error.Accent}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Kind}" Value="Warning">
+        <Setter Property="Foreground" Value="{DynamicResource Message.Warning.Accent}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Kind}" Value="Success">
+        <Setter Property="Foreground" Value="{DynamicResource Message.Success.Accent}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style x:Key="MessageStrip" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource Message.Info.Background}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Message.Info.Accent}" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Kind}" Value="Error">
+        <Setter Property="Background" Value="{DynamicResource Message.Error.Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Message.Error.Accent}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Kind}" Value="Warning">
+        <Setter Property="Background" Value="{DynamicResource Message.Warning.Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Message.Warning.Accent}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Kind}" Value="Success">
+        <Setter Property="Background" Value="{DynamicResource Message.Success.Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Message.Success.Accent}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- Texto de solo lectura que se puede seleccionar y copiar -->
+  <Style x:Key="SelectableText" TargetType="TextBox">
+    <Setter Property="IsReadOnly" Value="True" />
+    <Setter Property="IsReadOnlyCaretVisible" Value="False" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Panel.Foreground}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource Accent}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="TextBox">
+          <ScrollViewer x:Name="PART_ContentHost" Margin="0" Focusable="False" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- Barras de desplazamiento angostas -->
   <Style x:Key="ScrollThumb" TargetType="Thumb">
     <Setter Property="Template">
