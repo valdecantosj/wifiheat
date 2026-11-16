@@ -15,9 +15,9 @@ public sealed class AxisCommands
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-AR");
 
     /// <summary>
-    /// Propone ejes para muros dibujados con sus dos caras, dentro de una ventana.
+    /// Propone ejes para muros dibujados con sus dos caras, dentro de la zona de una planta.
     /// Crea líneas en la capa de muros con el espesor estimado y sin material; no modifica las caras.
-    /// Al repetirlo sobre la misma ventana reemplaza los ejes generados antes.
+    /// Al repetirlo sobre la misma zona reemplaza los ejes generados antes.
     /// </summary>
     [CommandMethod("WIFIEJES")]
     public void CreateAxes() => CommandGuard.Run("WIFIEJES", doc =>
@@ -25,7 +25,7 @@ public sealed class AxisCommands
         Editor ed = doc.Editor;
         if (!DrawingContext.TryGetUnit(doc, "WIFIEJES", out DrawingUnit unit)) return;
 
-        PromptPointResult first = ed.GetPoint(new PromptPointOptions("\nPrimera esquina de la ventana (una sola planta): "));
+        PromptPointResult first = ed.GetPoint(new PromptPointOptions("\nZona de la planta (rectángulo que encierre una sola planta). Primera esquina: "));
         if (first.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIEJES"); return; }
         PromptPointResult second = ed.GetCorner(new PromptCornerOptions("\nEsquina opuesta: ", first.Value));
         if (second.Status != PromptStatus.OK) { CommandGuard.Cancelled(ed, "WIFIEJES"); return; }
@@ -44,7 +44,7 @@ public sealed class AxisCommands
         AxisSurvey survey = surveyed.Value!;
         if (survey.Layers.Any(l => !l.ExplicitOnly))
         {
-            ed.WriteMessage($"\nDentro de la ventana, por capa: {Describe(survey.Layers.Where(l => !l.ExplicitOnly))}.");
+            ed.WriteMessage($"\nDentro de la zona, por capa: {Describe(survey.Layers.Where(l => !l.ExplicitOnly))}.");
         }
 
         if (survey.Layers.Any(l => l.ExplicitOnly))

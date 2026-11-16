@@ -10,7 +10,7 @@ namespace WifiHeat.AutoCAD.Reading;
 /// <summary>Geometría que usa la generación de ejes: caras de muro del plano y ejes ya generados.</summary>
 public static class FaceReader
 {
-    /// <summary>Líneas y polilíneas (tramos rectos) con todos sus extremos dentro de la ventana, fuera de las capas propias.</summary>
+    /// <summary>Líneas y polilíneas (tramos rectos) con todos sus extremos dentro de la zona, fuera de las capas propias.</summary>
     public static IReadOnlyList<LayerFaces> ReadFaces(Database db, Transaction tr, DrawingUnit unit, BoundingBox window)
     {
         var byLayer = new Dictionary<string, List<FaceSegment>>(StringComparer.OrdinalIgnoreCase);
@@ -50,7 +50,7 @@ public static class FaceReader
         return [.. byLayer.Select(kv => new LayerFaces(kv.Key, kv.Value))];
     }
 
-    /// <summary>Líneas de la capa de muros con la marca de eje generado, enteras dentro de la ventana.</summary>
+    /// <summary>Líneas de la capa de muros con la marca de eje generado, enteras dentro de la zona.</summary>
     public static IReadOnlyList<GeneratedAxis> ReadGeneratedAxes(Database db, Transaction tr, DrawingUnit unit, BoundingBox window)
     {
         var axes = new List<GeneratedAxis>();

@@ -8,7 +8,7 @@ namespace WifiHeat.AutoCAD.UI.ViewModels;
 
 public sealed record UnitOption(DrawingUnit Unit, string Label);
 
-/// <summary>Capa con caras de muro dentro de la ventana elegida.</summary>
+/// <summary>Capa con caras de muro dentro de la zona de la planta elegida.</summary>
 public sealed class AxisLayerViewModel(AxisLayerInfo info, Action changed) : ObservableObject
 {
     private bool _isSelected = info.IsSuggested;
@@ -150,12 +150,12 @@ public sealed class PrepareViewModel : ObservableObject
         if (!_owner.RequireUnit()) return;
         if (!TryGetMergeGap(out double gap)) return;
 
-        await _owner.RunAsync("Indicar en el dibujo las dos esquinas de una ventana que abarque una sola planta (Esc cancela).", async () =>
+        await _owner.RunAsync("Marcá con dos clics el rectángulo que encierra una sola planta (Esc cancela).", async () =>
         {
-            BoundingBox? window = await _owner.Interaction.PickWindowAsync("Ventana para generar ejes");
+            BoundingBox? window = await _owner.Interaction.PickWindowAsync("Zona de la planta");
             if (window is null)
             {
-                _owner.Report(StatusKind.Info, "Selección de ventana cancelada.");
+                _owner.Report(StatusKind.Info, "Selección de la zona cancelada.");
                 return;
             }
 
@@ -169,8 +169,8 @@ public sealed class PrepareViewModel : ObservableObject
 
             SetWindow(window, survey.Value!.Layers);
             _owner.Report(StatusKind.Info, survey.Value.SuggestedLayer is { } suggested
-                ? $"{Layers.Count} capa(s) dentro de la ventana. Sugerida: {suggested}. Revisar las capas y generar los ejes."
-                : $"{Layers.Count} capa(s) dentro de la ventana. Elegir las capas de las caras de muro.");
+                ? $"{Layers.Count} capa(s) dentro de la zona. Sugerida: {suggested}. Revisar las capas y generar los ejes."
+                : $"{Layers.Count} capa(s) dentro de la zona. Elegir las capas de las caras de muro.");
         });
     }
 
@@ -178,7 +178,7 @@ public sealed class PrepareViewModel : ObservableObject
     {
         if (_window is not { } window)
         {
-            _owner.Report(StatusKind.Warning, "Primero elegir la ventana con las caras de muro.");
+            _owner.Report(StatusKind.Warning, "Primero elegir la zona de la planta.");
             return;
         }
 
@@ -231,7 +231,7 @@ public sealed class PrepareViewModel : ObservableObject
         _window = window;
         Layers.Clear();
         foreach (AxisLayerInfo layer in layers) Layers.Add(new AxisLayerViewModel(layer, () => OnPropertyChanged(nameof(CanGenerate))));
-        WindowText = window is { } w ? $"Ventana de {w.Min} a {w.Max} m" : "";
+        WindowText = window is { } w ? $"Zona de la planta: de {w.Min} a {w.Max} m" : "";
         OnPropertyChanged(nameof(HasWindow));
         OnPropertyChanged(nameof(HasLayers));
         OnPropertyChanged(nameof(CanGenerate));

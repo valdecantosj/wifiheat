@@ -37,11 +37,11 @@ public interface IWifiHeatService
     /// <summary>Asigna material y espesor. Con espesor null se conserva el de cada muro (o el valor por defecto si no tiene).</summary>
     OperationResult<int> AssignMaterial(IReadOnlyCollection<string> handles, string materialId, double? thicknessM);
 
-    /// <summary>Capas con líneas o polilíneas enteras dentro de la ventana, con la cantidad de segmentos y de ejes de cada una.</summary>
+    /// <summary>Capas con líneas o polilíneas enteras dentro de la zona de la planta, con la cantidad de segmentos y de ejes de cada una.</summary>
     OperationResult<AxisSurvey> SurveyAxisLayers(BoundingBox windowM, double mergeGapM = AxisDefaults.MergeGapM);
 
     /// <summary>
-    /// Crea ejes de muro a partir de las caras de las capas elegidas. Los ejes generados antes dentro de la ventana
+    /// Crea ejes de muro a partir de las caras de las capas elegidas. Los ejes generados antes dentro de la zona
     /// se reemplazan; los que coinciden se conservan con su material.
     /// </summary>
     OperationResult<AxisGeneration> GenerateAxes(BoundingBox windowM, IReadOnlyCollection<string> layers, double mergeGapM = AxisDefaults.MergeGapM);

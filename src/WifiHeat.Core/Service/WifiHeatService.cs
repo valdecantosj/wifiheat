@@ -18,7 +18,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     private const double SameAxisToleranceM = 0.01;
     private const string MissingUnit = "El dibujo no tiene unidad guardada. Ejecutar WIFISETUP.";
-    private const string NoFacesInWindow = "No hay líneas ni polilíneas enteras dentro de la ventana.";
+    private const string NoFacesInWindow = "No hay líneas ni polilíneas enteras dentro de la zona de la planta.";
 
     private DrawingContents _drawingContents = new([], []);
 
@@ -146,7 +146,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         string[] missing = [.. wanted.Where(l => !byLayer.ContainsKey(l))];
         if (missing.Length > 0)
         {
-            return OperationResult<AxisGeneration>.Fail($"Sin segmentos dentro de la ventana en la capa '{string.Join("', '", missing)}'. No se creó ningún eje.");
+            return OperationResult<AxisGeneration>.Fail($"Sin segmentos dentro de la zona en la capa '{string.Join("', '", missing)}'. No se creó ningún eje.");
         }
 
         List<FaceSegment> chosen = [.. wanted.SelectMany(l => byLayer[l])];
@@ -371,10 +371,10 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
     /// <summary>Guarda la unidad y crea capas y aplicación registrada si faltan.</summary>
     protected abstract void WriteUnit(DrawingUnit unit);
 
-    /// <summary>Líneas y tramos rectos de polilíneas enteros dentro de la ventana, por capa, fuera de las capas propias.</summary>
+    /// <summary>Líneas y tramos rectos de polilíneas enteros dentro de la zona, por capa, fuera de las capas propias.</summary>
     protected abstract IReadOnlyList<LayerFaces> ReadFaces(BoundingBox windowM);
 
-    /// <summary>Ejes generados antes (con marca) que están enteros dentro de la ventana.</summary>
+    /// <summary>Ejes generados antes (con marca) que están enteros dentro de la zona.</summary>
     protected abstract IReadOnlyList<GeneratedAxis> ReadGeneratedAxes(BoundingBox windowM);
 
     /// <summary>Borra los ejes indicados y crea los nuevos en la capa de muros, marcados como generados y sin material.</summary>

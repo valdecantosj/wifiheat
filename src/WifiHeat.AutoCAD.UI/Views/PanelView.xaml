@@ -69,13 +69,13 @@
               <Border Style="{StaticResource Rule}" />
               <TextBlock Style="{StaticResource SubHeading}" Text="Ejes de muros dibujados con dos caras" />
               <DockPanel>
-                <Button DockPanel.Dock="Left" Content="Elegir _ventana…" Command="{Binding PickWindowCommand}"
-                        ToolTip="Pide dos esquinas en el dibujo. La ventana debe abarcar una sola planta." />
+                <Button DockPanel.Dock="Left" Content="Elegir _zona de la planta…" Command="{Binding PickWindowCommand}"
+                        ToolTip="Marcá con dos clics el rectángulo que encierra una sola planta." />
                 <TextBox DockPanel.Dock="Right" Width="52" Text="{Binding MergeGapText}" AutomationProperties.Name="Umbral de unión en metros"
                          ToolTip="Los tramos alineados separados hasta esta distancia se unen: las aberturas más angostas se cierran." />
                 <TextBlock Style="{StaticResource FieldLabel}" Text="Unir tramos hasta (m)" HorizontalAlignment="Right" TextAlignment="Right" Margin="8,0,6,0" />
               </DockPanel>
-              <TextBlock Style="{StaticResource EmptyState}" Text="Elegir una ventana que abarque una sola planta para ver sus capas."
+              <TextBlock Style="{StaticResource EmptyState}" Text="Marcá con dos clics el rectángulo que encierra una sola planta para ver sus capas."
                          Visibility="{Binding HasWindow, Converter={StaticResource Hidden}}" />
               <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,2" Text="{Binding WindowText}"
                          Visibility="{Binding HasWindow, Converter={StaticResource Visible}}" />
@@ -95,7 +95,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <Button Style="{StaticResource Primary}" Margin="0,8,0,0" Content="_Generar ejes" Command="{Binding GenerateAxesCommand}"
-                      IsEnabled="{Binding CanGenerate}" ToolTip="Crea los ejes en la capa WIFIHEAT_MUROS. Repetirlo sobre la misma ventana no los duplica." />
+                      IsEnabled="{Binding CanGenerate}" ToolTip="Crea los ejes en la capa WIFIHEAT_MUROS. Repetirlo sobre la misma zona no los duplica." />
               <TextBlock Style="{StaticResource Value}" Margin="0,6,0,0" Text="{Binding AxisSummary}"
                          Visibility="{Binding HasAxisSummary, Converter={StaticResource Visible}}" />
               <Button Style="{StaticResource LinkButton}" Margin="0,4,0,0" Content="{Binding UnpairedText}" Command="{Binding ShowUnpairedCommand}"

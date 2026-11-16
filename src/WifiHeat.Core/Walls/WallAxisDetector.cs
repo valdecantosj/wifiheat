@@ -50,7 +50,7 @@ public static class WallAxisDetector
     private const double MinJoinAngleDeg = 10;
     private const double Tiny = 1e-9;
 
-    /// <summary>Segmentos con los dos extremos dentro de la ventana.</summary>
+    /// <summary>Segmentos con los dos extremos dentro de la zona.</summary>
     public static IReadOnlyList<FaceSegment> InsideWindow(IEnumerable<FaceSegment> faces, BoundingBox window) =>
         [.. faces.Where(f => Inside(f.Segment.A, window) && Inside(f.Segment.B, window))];
 

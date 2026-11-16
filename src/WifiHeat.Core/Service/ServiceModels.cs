@@ -71,7 +71,7 @@ public sealed record DrawingSetup(DrawingUnit? Unit, DrawingUnit SuggestedUnit, 
 public sealed record CoverageAreaInfo(bool IsCustom, string Description, string? Handle, int VertexCount, double AreaM2, BoundingBox? Bounds, string? Warning);
 
 /// <summary>
-/// Capa con segmentos dentro de la ventana y cuántos ejes daría por sí sola.
+/// Capa con segmentos dentro de la zona de la planta y cuántos ejes daría por sí sola.
 /// ExplicitOnly: no se procesa salvo que el usuario la nombre (capa 0, ventanas).
 /// </summary>
 public sealed record AxisLayerInfo(string Layer, int SegmentCount, int AxisCount, bool IsSuggested, bool ExplicitOnly);

@@ -15,7 +15,7 @@ namespace WifiHeat.AutoCAD;
 
 /// <summary>
 /// <see cref="IWifiHeatService"/> sobre un documento de AutoCAD. Comandos y panel llaman a esta misma instancia.
-/// Usar solo desde el hilo de AutoCAD; cada lectura y escritura bloquea el documento, así que sirve también desde una ventana no modal.
+/// Usar solo desde el hilo de AutoCAD; cada lectura y escritura bloquea el documento, así que sirve también desde una paleta no modal.
 /// </summary>
 public sealed class AutoCadWifiHeatService(Document document, SimulationSession session) : WifiHeatService(session)
 {
