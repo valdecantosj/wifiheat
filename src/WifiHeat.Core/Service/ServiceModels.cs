@@ -99,4 +99,41 @@ public sealed record LayerFaces(string Layer, IReadOnlyList<FaceSegment> Faces);
 /// <summary>Eje creado antes por la generación automática, identificado por su marca en el dibujo.</summary>
 public sealed record GeneratedAxis(string Handle, Segment2 Axis);
 
-public sealed record NewAxis(Segment2 Axis, double ThicknessM);
+/// <summary>Eje a crear. MaterialId null = sin material.</summary>
+public sealed record NewAxis(Segment2 Axis, double ThicknessM, string? MaterialId = null);
+
+/// <summary>Línea o polilínea elegida en el dibujo, con sus tramos rectos en metros. IsWall: ya está en la capa de muros.</summary>
+public sealed record EntityFaces(string Handle, string Layer, bool IsWall, IReadOnlyList<Segment2> Segments);
+
+/// <summary>Pares de caras de un mismo muro entre entidades que todavía no son muros. FaceHandles: las entidades emparejadas.</summary>
+public sealed record FacePairSurvey(int PairCount, IReadOnlyList<string> FaceHandles, double MinThicknessM, double MaxThicknessM)
+{
+    public static FacePairSurvey None { get; } = new(0, [], 0, 0);
+
+    public bool HasPairs => PairCount > 0;
+}
+
+/// <summary>
+/// Resultado de asignar material uniendo caras. AxesKept: ejes que ya existían en ese lugar y recibieron el material.
+/// FaceCount: entidades que quedaron como caras en su capa. SingleWalls: entidades sin par que pasaron a ser muros.
+/// </summary>
+public sealed record FaceJoin(
+    int AxesCreated,
+    int AxesKept,
+    int FaceCount,
+    int SingleWalls,
+    double MinThicknessM,
+    double MaxThicknessM,
+    IReadOnlyList<string> AxisHandles,
+    IReadOnlyList<string> PartlyUnpaired)
+{
+    public int AxisCount => AxesCreated + AxesKept;
+
+    public int WallCount => AxisCount + SingleWalls;
+}
+
+/// <summary>Muros de simulación paralelos y cercanos, que suman la pérdida dos veces.</summary>
+public sealed record ParallelWallsInfo(IReadOnlyList<string> Handles, double SeparationM, bool Convertible);
+
+/// <summary>Resultado de convertir muros paralelos en ejes. Skipped: muros que siguen igual porque tienen tramos largos sin par.</summary>
+public sealed record ParallelConversion(int AxesCreated, int FacesMoved, IReadOnlyList<string> AxisHandles, IReadOnlyList<string> Skipped);

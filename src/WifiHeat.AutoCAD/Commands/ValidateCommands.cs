@@ -1,15 +1,48 @@
+using System.Globalization;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using WifiHeat.Core.Service;
+using WifiHeat.Core.Workflow;
 
 namespace WifiHeat.AutoCAD.Commands;
 
 public sealed class ValidateCommands
 {
-    /// <summary>Lee los muros del dibujo, los valida e informa cada problema con el handle de la entidad.</summary>
-    [CommandMethod("WIFIVALIDATE")]
-    public void Validate() => CommandGuard.Run("WIFIVALIDATE", doc =>
-        Print(doc.Editor, "WIFIVALIDATE", Sessions.Service(doc).Validate()));
+    private const string Command = "WIFIVALIDATE";
+    private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-AR");
+
+    /// <summary>
+    /// Lee los muros del dibujo, los valida e informa cada problema con el handle de la entidad.
+    /// Si hay muros paralelos que suman dos veces, ofrece convertirlos en un eje.
+    /// </summary>
+    [CommandMethod(Command)]
+    public void Validate() => CommandGuard.Run(Command, doc =>
+    {
+        Editor ed = doc.Editor;
+        AutoCadWifiHeatService service = Sessions.Service(doc);
+        Print(ed, Command, service.Validate());
+
+        IReadOnlyList<ParallelWallsInfo> parallel = service.FindParallelWalls();
+        if (parallel.Count == 0) return;
+
+        string question = $"\nHay {parallel.Count} grupo(s) de muros paralelos a menos de 0,50 m. Convertirlos en ejes";
+        if (!CommandOutput.AskYesNo(ed, question, defaultYes: false, out bool convert))
+        {
+            CommandGuard.Cancelled(ed, Command);
+            return;
+        }
+
+        if (!convert) return;
+
+        OperationResult<ParallelConversion> converted = service.ConvertParallelWalls();
+        CommandOutput.Problems(ed, Command, converted.Errors, converted.Warnings);
+        if (!converted.Succeeded) return;
+
+        ParallelConversion c = converted.Value!;
+        ed.WriteMessage(string.Create(Es,
+            $"\n{Command}: {c.AxesCreated} eje(s) creado(s); {c.FacesMoved} cara(s) pasaron a la capa {WifiHeatNames.FaceLayer}, que no se lee como muro."));
+        Print(ed, Command, service.Validate());
+    });
 
     public static void Print(Editor ed, string command, ValidationSummary summary)
     {

@@ -37,6 +37,24 @@ public interface IWifiHeatService
     /// <summary>Asigna material y espesor. Con espesor null se conserva el de cada muro (o el valor por defecto si no tiene).</summary>
     OperationResult<int> AssignMaterial(IReadOnlyCollection<string> handles, string materialId, double? thicknessM);
 
+    /// <summary>
+    /// Pares de caras de un mismo muro entre las entidades elegidas que todavía no son muros,
+    /// con las reglas de la generación de ejes. No modifica el dibujo.
+    /// </summary>
+    FacePairSurvey FindFacePairs(IReadOnlyCollection<string> handles);
+
+    /// <summary>
+    /// Como <see cref="AssignMaterial"/>, pero cada par de caras se reemplaza por un eje con el material elegido y el espesor medido.
+    /// Las caras quedan en su capa; solo las entidades sin par pasan a la capa de muros.
+    /// </summary>
+    OperationResult<FaceJoin> AssignMaterialJoiningFaces(IReadOnlyCollection<string> handles, string materialId, double? thicknessM);
+
+    /// <summary>Muros de simulación paralelos y cercanos (las dos caras de un mismo muro), que suman la pérdida dos veces.</summary>
+    IReadOnlyList<ParallelWallsInfo> FindParallelWalls();
+
+    /// <summary>Reemplaza cada grupo de muros paralelos por un eje con su material y pasa las caras a una capa que no se lee como muro.</summary>
+    OperationResult<ParallelConversion> ConvertParallelWalls();
+
     /// <summary>Capas con líneas o polilíneas enteras dentro de la zona de la planta, con la cantidad de segmentos y de ejes de cada una.</summary>
     OperationResult<AxisSurvey> SurveyAxisLayers(BoundingBox windowM, double mergeGapM = AxisDefaults.MergeGapM);
 

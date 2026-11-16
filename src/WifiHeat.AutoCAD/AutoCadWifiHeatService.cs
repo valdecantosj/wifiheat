@@ -137,6 +137,65 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
         tr.Commit();
     }
 
+    protected override IReadOnlyList<EntityFaces> ReadEntityFaces(IReadOnlyCollection<string> handles)
+    {
+        var result = new List<EntityFaces>();
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        foreach (string handle in handles)
+        {
+            if (!TryOpen(tr, handle, out Entity? entity) || entity is not (Line or Polyline)) continue;
+
+            bool isWall = string.Equals(entity.Layer, WifiHeatNames.WallLayer, StringComparison.OrdinalIgnoreCase);
+            result.Add(new EntityFaces(entity.Handle.ToString(), entity.Layer, isWall, FaceReader.StraightSegments(unit, (Curve)entity)));
+        }
+
+        tr.Commit();
+        return result;
+    }
+
+    protected override IReadOnlyList<string> CreateAxes(IReadOnlyList<NewAxis> axes)
+    {
+        var handles = new List<string>(axes.Count);
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        DrawingStore.EnsureAll(Db, tr);
+        BlockTableRecord modelSpace = ModelSpace.Open(Db, tr, OpenMode.ForWrite);
+        foreach (NewAxis axis in axes)
+        {
+            var line = new Line(ModelSpace.ToDrawing(unit, axis.Axis.A), ModelSpace.ToDrawing(unit, axis.Axis.B))
+            {
+                Layer = WifiHeatNames.WallLayer,
+            };
+            ModelSpace.Add(modelSpace, tr, line);
+            WifiXData.WriteWall(line, axis.MaterialId ?? "", axis.ThicknessM, generatedAxis: false);
+            handles.Add(line.Handle.ToString());
+        }
+
+        tr.Commit();
+        return handles;
+    }
+
+    protected override void RetireFaces(IReadOnlyList<string> handles)
+    {
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingStore.EnsureRegApp(Db, tr);
+        DrawingStore.EnsureLayer(Db, tr, WifiHeatNames.FaceLayer, 8);
+        foreach (string handle in handles)
+        {
+            if (!TryOpen(tr, handle, out Entity? entity)) continue;
+
+            entity!.UpgradeOpen();
+            WifiXData.Clear(entity);
+            entity.Layer = WifiHeatNames.FaceLayer;
+        }
+
+        tr.Commit();
+    }
+
     protected override IReadOnlyList<string> WriteWalls(IReadOnlyList<WallAssignment> assignments)
     {
         var missing = new List<string>();

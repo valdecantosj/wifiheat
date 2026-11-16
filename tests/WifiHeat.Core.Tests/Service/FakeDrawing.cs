@@ -19,6 +19,9 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
     public DrawingUnit? Unit { get; set; } = DrawingUnit.Metres;
     public Dictionary<string, Wall> Walls { get; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> GeneratedHandles { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public const string FaceLayer = "WIFIHEAT_CARAS";
+
+    public Dictionary<string, (string Layer, List<Segment2> Segments)> Lines { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, List<FaceSegment>> Faces { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, Polygon2> Polylines { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<ValidationIssue> HostIssues { get; } = [];
@@ -36,6 +39,9 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
 
     public void Add(string handle, double ax, double ay, double bx, double by, string? material = null, double? thickness = null) =>
         Walls[handle] = new Wall(handle, [new Segment2(new Vec2(ax, ay), new Vec2(bx, by))], material, thickness);
+
+    public void AddLine(string layer, string handle, double ax, double ay, double bx, double by) =>
+        Lines[handle] = (layer, [new Segment2(new Vec2(ax, ay), new Vec2(bx, by))]);
 
     public void AddFace(string layer, string id, double ax, double ay, double bx, double by)
     {
@@ -100,13 +106,58 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
         }
     }
 
+    protected override IReadOnlyList<EntityFaces> ReadEntityFaces(IReadOnlyCollection<string> handles)
+    {
+        var result = new List<EntityFaces>();
+        foreach (string handle in handles)
+        {
+            if (Walls.TryGetValue(handle, out Wall? wall)) result.Add(new EntityFaces(wall.Id, WallLayer, true, wall.Segments));
+            else if (Lines.TryGetValue(handle, out var line)) result.Add(new EntityFaces(handle, line.Layer, false, line.Segments));
+        }
+
+        return result;
+    }
+
+    protected override IReadOnlyList<string> CreateAxes(IReadOnlyList<NewAxis> axes)
+    {
+        var handles = new List<string>();
+        foreach (NewAxis axis in axes)
+        {
+            string handle = $"E{_nextHandle++}";
+            Walls[handle] = new Wall(handle, [axis.Axis], axis.MaterialId, axis.ThicknessM);
+            handles.Add(handle);
+        }
+
+        return handles;
+    }
+
+    protected override void RetireFaces(IReadOnlyList<string> handles)
+    {
+        foreach (string handle in handles)
+        {
+            if (!Walls.Remove(handle, out Wall? wall)) continue;
+            GeneratedHandles.Remove(handle);
+            Lines[handle] = (FaceLayer, [.. wall.Segments]);
+        }
+    }
+
     protected override IReadOnlyList<string> WriteWalls(IReadOnlyList<WallAssignment> assignments)
     {
         var missing = new List<string>();
         foreach (WallAssignment a in assignments)
         {
-            if (Walls.TryGetValue(a.Handle, out Wall? w)) Walls[a.Handle] = w with { MaterialId = a.MaterialId, ThicknessM = a.ThicknessM };
-            else missing.Add(a.Handle);
+            if (Walls.TryGetValue(a.Handle, out Wall? w))
+            {
+                Walls[a.Handle] = w with { MaterialId = a.MaterialId, ThicknessM = a.ThicknessM };
+            }
+            else if (Lines.Remove(a.Handle, out var line))
+            {
+                Walls[a.Handle] = new Wall(a.Handle, line.Segments, a.MaterialId, a.ThicknessM);
+            }
+            else
+            {
+                missing.Add(a.Handle);
+            }
         }
 
         return missing;

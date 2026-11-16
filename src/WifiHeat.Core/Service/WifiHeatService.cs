@@ -78,17 +78,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     public OperationResult<int> AssignMaterial(IReadOnlyCollection<string> handles, string materialId, double? thicknessM)
     {
-        if (handles.Count == 0) return OperationResult<int>.Fail("No se eligió ningún muro.");
-        if (string.IsNullOrWhiteSpace(materialId) || !Session.Catalog.TryGet(materialId.Trim(), out Material material))
-        {
-            string ids = string.Join("/", Session.Catalog.All.Select(m => m.Id));
-            return OperationResult<int>.Fail($"{ValidationIssue.UnknownMaterial}: '{materialId}' no está en el catálogo. Valores posibles: {ids}. No se modificó ningún muro.");
-        }
-
-        if (thicknessM is { } t && (!double.IsFinite(t) || t <= 0))
-        {
-            return OperationResult<int>.Fail("El espesor debe ser un número mayor que 0 m. No se modificó ningún muro.");
-        }
+        if (AssignmentError(handles, materialId, thicknessM, out Material material) is { } error) return OperationResult<int>.Fail(error);
 
         LoadWalls();
         var existing = _drawingContents.Walls.ToDictionary(w => w.Wall.Id, w => w.Wall.ThicknessM, StringComparer.OrdinalIgnoreCase);
@@ -102,6 +92,109 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         return updated == 0
             ? new OperationResult<int>(0, ["Ninguna de las entidades elegidas existe en el dibujo."], warnings)
             : OperationResult<int>.Ok(updated, warnings);
+    }
+
+    public FacePairSurvey FindFacePairs(IReadOnlyCollection<string> handles)
+    {
+        if (handles.Count == 0 || ReadSetup().Unit is null) return FacePairSurvey.None;
+
+        FacePairs pairs = PairsAmongNewEntities(ReadEntityFaces(Distinct(handles)));
+        return pairs.Axes.Count == 0
+            ? FacePairSurvey.None
+            : new FacePairSurvey(pairs.Axes.Count, pairs.Paired, pairs.Axes.Min(a => a.ThicknessM), pairs.Axes.Max(a => a.ThicknessM));
+    }
+
+    public OperationResult<FaceJoin> AssignMaterialJoiningFaces(IReadOnlyCollection<string> handles, string materialId, double? thicknessM)
+    {
+        if (AssignmentError(handles, materialId, thicknessM, out Material material) is { } error) return OperationResult<FaceJoin>.Fail(error);
+
+        LoadWalls();
+        string[] chosen = Distinct(handles);
+        FacePairs pairs = ReadSetup().Unit is null ? new FacePairs([], [], [], []) : PairsAmongNewEntities(ReadEntityFaces(chosen));
+        var faces = new HashSet<string>(pairs.Paired, StringComparer.OrdinalIgnoreCase);
+
+        var create = new List<NewAxis>();
+        var assignments = new List<WallAssignment>();
+        var keptAxes = new List<string>();
+        foreach (WallAxis axis in pairs.Axes)
+        {
+            double thickness = Math.Round(axis.ThicknessM, 3);
+            if (ExistingAxis(axis.Axis, []) is { } existing)
+            {
+                keptAxes.Add(existing);
+                assignments.Add(new WallAssignment(existing, material.Id, thickness));
+            }
+            else
+            {
+                create.Add(new NewAxis(axis.Axis, thickness, material.Id));
+            }
+        }
+
+        var existingThickness = _drawingContents.Walls.ToDictionary(w => w.Wall.Id, w => w.Wall.ThicknessM, StringComparer.OrdinalIgnoreCase);
+        List<WallAssignment> singles = [.. chosen
+            .Where(h => !faces.Contains(h) && !keptAxes.Contains(h, StringComparer.OrdinalIgnoreCase))
+            .Select(h => new WallAssignment(h, material.Id, thicknessM ?? existingThickness.GetValueOrDefault(h) ?? DefaultThicknessM))];
+        assignments.AddRange(singles);
+
+        IReadOnlyList<string> created = create.Count == 0 ? [] : CreateAxes(create);
+        IReadOnlyList<string> notFound = assignments.Count == 0 ? [] : WriteWalls(assignments);
+        LoadWalls();
+
+        int singleWalls = singles.Count(s => !notFound.Contains(s.Handle, StringComparer.OrdinalIgnoreCase));
+        var warnings = new List<string>();
+        if (notFound.Count > 0) warnings.Add($"No se encontraron en el dibujo: {string.Join(", ", notFound)}.");
+        if (pairs.WithLeftover.Count > 0)
+        {
+            warnings.Add($"Con tramos sin par de más de 0,5 m, que no quedan como muro: {string.Join(", ", pairs.WithLeftover)}.");
+        }
+
+        var result = new FaceJoin(
+            created.Count, keptAxes.Count, faces.Count, singleWalls,
+            pairs.Axes.Count == 0 ? 0 : pairs.Axes.Min(a => a.ThicknessM),
+            pairs.Axes.Count == 0 ? 0 : pairs.Axes.Max(a => a.ThicknessM),
+            [.. created, .. keptAxes], pairs.WithLeftover);
+        return result.WallCount == 0
+            ? new OperationResult<FaceJoin>(result, ["Ninguna de las entidades elegidas existe en el dibujo."], warnings)
+            : OperationResult<FaceJoin>.Ok(result, warnings);
+    }
+
+    public IReadOnlyList<ParallelWallsInfo> FindParallelWalls()
+    {
+        LoadWalls();
+        return [.. ParallelWalls.Find(Session.Walls).Select(g => new ParallelWallsInfo(g.WallIds, g.SeparationM, g.Convertible))];
+    }
+
+    public OperationResult<ParallelConversion> ConvertParallelWalls()
+    {
+        LoadWalls();
+        IReadOnlyList<ParallelWallGroup> groups = ParallelWalls.Find(Session.Walls);
+        if (groups.Count == 0)
+        {
+            return OperationResult<ParallelConversion>.Ok(new ParallelConversion(0, 0, [], []), ["No hay muros paralelos a menos de 0,50 m; el dibujo no se modificó."]);
+        }
+
+        var byId = Session.Walls.ToDictionary(w => w.Id, StringComparer.OrdinalIgnoreCase);
+        var retire = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var create = new List<NewAxis>();
+        foreach (ParallelWallGroup group in groups.Where(g => g.Convertible))
+        {
+            retire.UnionWith(group.WallIds);
+            if (ExistingAxis(group.Axis, group.WallIds) is null)
+            {
+                create.Add(new NewAxis(group.Axis, Math.Round(group.SeparationM, 3), StrongestMaterial(group.WallIds.Select(id => byId[id].MaterialId))));
+            }
+        }
+
+        string[] skipped = [.. groups.Where(g => !g.Convertible).SelectMany(g => g.WallIds).Where(id => !retire.Contains(id)).Distinct(StringComparer.OrdinalIgnoreCase)];
+        IReadOnlyList<string> warnings = skipped.Length == 0
+            ? []
+            : [$"Sin convertir, porque tienen tramos sin par de más de 0,5 m: {string.Join(", ", skipped)}. Corregirlos a mano."];
+        if (retire.Count == 0) return OperationResult<ParallelConversion>.Ok(new ParallelConversion(0, 0, [], skipped), warnings);
+
+        IReadOnlyList<string> created = create.Count == 0 ? [] : CreateAxes(create);
+        RetireFaces([.. retire]);
+        LoadWalls();
+        return OperationResult<ParallelConversion>.Ok(new ParallelConversion(created.Count, retire.Count, created, skipped), warnings);
     }
 
     public OperationResult<AxisSurvey> SurveyAxisLayers(BoundingBox windowM, double mergeGapM = AxisDefaults.MergeGapM)
@@ -349,6 +442,45 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         read.Polygon is not null, read.Description, read.Handle,
         read.Polygon?.Vertices.Count ?? 0, read.Polygon?.AreaM2 ?? 0, read.Polygon?.Bounds, read.Warning);
 
+    private string? AssignmentError(IReadOnlyCollection<string> handles, string materialId, double? thicknessM, out Material material)
+    {
+        material = null!;
+        if (handles.Count == 0) return "No se eligió ningún muro.";
+        if (string.IsNullOrWhiteSpace(materialId) || !Session.Catalog.TryGet(materialId.Trim(), out material))
+        {
+            string ids = string.Join("/", Session.Catalog.All.Select(m => m.Id));
+            return $"{ValidationIssue.UnknownMaterial}: '{materialId}' no está en el catálogo. Valores posibles: {ids}. No se modificó ningún muro.";
+        }
+
+        return thicknessM is { } t && (!double.IsFinite(t) || t <= 0)
+            ? "El espesor debe ser un número mayor que 0 m. No se modificó ningún muro."
+            : null;
+    }
+
+    private static string[] Distinct(IReadOnlyCollection<string> handles) => [.. handles.Distinct(StringComparer.OrdinalIgnoreCase)];
+
+    private static FacePairs PairsAmongNewEntities(IReadOnlyList<EntityFaces> entities) =>
+        FacePairing.Detect([.. entities.Where(e => !e.IsWall).Select(e => new FaceEntity(e.Handle, e.Segments))]);
+
+    /// <summary>Muro de un solo tramo que ya ocupa ese eje, sin contar los indicados.</summary>
+    private string? ExistingAxis(Segment2 axis, IReadOnlyList<string> except) =>
+        _drawingContents.Walls
+            .FirstOrDefault(w => w.Wall.Segments.Count == 1 && !except.Contains(w.Wall.Id, StringComparer.OrdinalIgnoreCase) && SameAxis(w.Wall.Segments[0], axis))
+            ?.Wall.Id;
+
+    /// <summary>Entre los materiales de las caras, el de mayor pérdida; null si ninguna tiene uno del catálogo.</summary>
+    private string? StrongestMaterial(IEnumerable<string?> materialIds)
+    {
+        Material? best = null;
+        foreach (string? id in materialIds)
+        {
+            if (id is null || !Session.Catalog.TryGet(id, out Material material)) continue;
+            if (best is null || material.LossDb2_4 > best.LossDb2_4 || (material.LossDb2_4 == best.LossDb2_4 && material.LossDb5 > best.LossDb5)) best = material;
+        }
+
+        return best?.Id;
+    }
+
     private string? AxisPrecondition(double mergeGapM) =>
         ReadSetup().Unit is null ? MissingUnit : AxisDetectionOptions.MergeGapError(mergeGapM);
 
@@ -379,6 +511,15 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     /// <summary>Borra los ejes indicados y crea los nuevos en la capa de muros, marcados como generados y sin material.</summary>
     protected abstract void ReplaceAxes(IReadOnlyList<string> eraseHandles, IReadOnlyList<NewAxis> create);
+
+    /// <summary>Líneas y polilíneas con esos handles, con sus tramos rectos en metros. Las demás entidades se omiten.</summary>
+    protected abstract IReadOnlyList<EntityFaces> ReadEntityFaces(IReadOnlyCollection<string> handles);
+
+    /// <summary>Crea ejes en la capa de muros, con su espesor y su material si lo traen. Devuelve los handles nuevos, en el mismo orden.</summary>
+    protected abstract IReadOnlyList<string> CreateAxes(IReadOnlyList<NewAxis> axes);
+
+    /// <summary>Quita la condición de muro a esas entidades y las pasa a la capa neutra de caras.</summary>
+    protected abstract void RetireFaces(IReadOnlyList<string> handles);
 
     /// <summary>Guarda la polilínea como área de cobertura (null la quita) y devuelve lo guardado, o el motivo del rechazo.</summary>
     protected abstract OperationResult<CoverageAreaRead> WriteCoverageArea(string? polylineHandle);

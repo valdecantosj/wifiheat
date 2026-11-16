@@ -25,6 +25,13 @@ public static class WifiXData
         entity.XData = data;
     }
 
+    /// <summary>Quita los datos de la aplicación: la entidad deja de ser muro o AP.</summary>
+    public static void Clear(Entity entity)
+    {
+        using var data = new ResultBuffer(new TypedValue((int)DxfCode.ExtendedDataRegAppName, WifiHeatNames.AppName));
+        entity.XData = data;
+    }
+
     /// <summary>True si el muro es un eje creado por la generación automática.</summary>
     public static bool IsGeneratedAxis(Entity entity)
     {
