@@ -112,6 +112,28 @@ El mapa de calor usa un degradé continuo: el color se interpola linealmente en 
 
 Así, el color puro aparece en el centro de cada intervalo y en los límites se ve la mezcla de los dos colores vecinos. La leyenda y la consulta de un punto usan los mismos seis colores y los mismos límites de la tabla anterior.
 
+## Limitaciones
+
+- **Modelo 2D, sin pisos ni alturas.** El plano es una sola planta. No hay pérdida entre pisos y no se consideran las alturas del AP, del receptor ni de los muros y las aberturas.
+- **Antena isotrópica.** La ganancia se aplica igual en todas las direcciones: no hay diagrama de radiación, orientación ni polarización.
+- **Materiales de tablas publicadas, no medidos.** Los valores de `config/materials.json` salen de fuentes de práctica profesional y no son mediciones propias. El del ladrillo hueco es un supuesto intermedio entre la placa de yeso y el ladrillo macizo, sin fuente directa.
+- **El espesor no cambia la pérdida.** Cada muro cruzado resta el valor completo de su material, sea de 10 o de 30 cm.
+- **Armadura por niveles como convención.** Los adicionales de 2,5, 5 y 7,5 dB son una convención del proyecto, no una relación medida entre cuantía de acero y decibeles.
+- **Sin difracción ni reflexiones.** El modelo solo considera el trayecto directo.
+
+### Difracción
+
+La señal real rodea los obstáculos angostos, y el modelo no lo representa. Ejemplo: una columna de 30 cm a 5 GHz.
+
+- En el modelo, atravesarla cuesta 49,8 dB: 44,8 dB del hormigón más 5 dB de armadura media.
+- Una estimación por filo de cuchilla del camino que la rodea da del orden de 12 dB. Con el AP y el punto a 3 m de la columna cada uno y el punto detrás de su eje, $v \approx 0{,}72$ y la aproximación de ITU-R P.526, $J(v) = 6{,}9 + 20\log_{10}\left(\sqrt{(v-0{,}1)^2+1} + v - 0{,}1\right)$, da unos 12 dB. Es una estimación teórica, no una medición.
+
+Por eso la sombra detrás de columnas angostas está sobrestimada: el modelo resta más de cuatro veces la pérdida estimada del camino que rodea la columna.
+
+### Reflexiones y error esperable
+
+En interiores la señal también llega por rebotes en paredes, techo y piso, que no se calculan. Los modelos multi-pared de este tipo tienen errores típicos de 5 a 10 dB frente a mediciones, y el mapa debe leerse como una estimación orientativa de la cobertura, no como una predicción de la potencia en cada punto.
+
 ## Referencias
 
 1. ITU-R, Recomendación P.525-5 (11/2024), *Calculation of free-space attenuation*. Pérdida básica de transmisión en el espacio libre.
@@ -122,5 +144,7 @@ Así, el color puro aparece en el centro de cada intervalo y en los límites se 
 
 6. iBwave, *A closer look at attenuation across materials & the 2.4 GHz & 5 GHz bands* (2018). Pérdida por material: «Concrete – Heavy» 22,792 / 44,769 dB. https://blog.ibwave.com/a-closer-look-at-attenuation-across-materials-the-2-4ghz-5ghz-bands/
 7. Interline, *Building Materials and Wi-Fi Signal Loss (2.4 GHz and 5 GHz)*. «Reinforced concrete»: 25–30 dB o más / 50 dB o más. https://interline.pl/Information-and-Tips/Building-Materials-and-Wi-Fi-Signal-Loss-2.4-GHz-and-5-GHz
+
+8. ITU-R, Recomendación P.526, *Propagation by diffraction*. Aproximación de la pérdida por un filo de cuchilla, $J(v)$.
 
 Los valores de cada material, los adicionales de armadura y sus fuentes están en `config/materials.json`.
