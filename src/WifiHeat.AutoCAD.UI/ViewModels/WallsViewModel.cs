@@ -22,6 +22,22 @@ public sealed class MaterialOption(Material material)
     public override string ToString() => Name;
 }
 
+/// <summary>Nivel de armadura de una columna, con su adicional de pérdida sobre el hormigón.</summary>
+public sealed class ReinforcementOption(ReinforcementLevel level)
+{
+    public Reinforcement Level { get; } = level.Level;
+
+    public string Name { get; } = level.Name;
+
+    public double AdditionalLossDb { get; } = level.AdditionalLossDb;
+
+    public string Example { get; } = level.Example;
+
+    public string Label { get; } = $"{level.Name} · +{NumberText.Format(level.AdditionalLossDb, "0.#")} dB";
+
+    public override string ToString() => Label;
+}
+
 public enum WallFilter
 {
     All,
@@ -59,10 +75,20 @@ public sealed class WallRowViewModel : ObservableObject
 
     public bool MissingMaterial => _info.MaterialId is null;
 
+    public bool IsColumn => _info.IsColumn;
+
+    public bool IsWall => !_info.IsColumn;
+
+    /// <summary>Lo que se muestra en lugar del material y el espesor cuando la fila es una columna.</summary>
+    public string ColumnText => !_info.IsColumn ? "" : _owner.ColumnText(_info.Reinforcement);
+
     /// <summary>Material escrito en el dibujo que no está en el catálogo.</summary>
     public bool UnknownMaterial => _info.MaterialId is not null && _material is null;
 
-    public string MaterialNote => MissingMaterial ? "Sin material" : UnknownMaterial ? $"Material desconocido: {_info.MaterialId}" : _material!.LossText;
+    public string MaterialNote => MissingMaterial ? "Sin material"
+        : UnknownMaterial ? $"Material desconocido: {_info.MaterialId}"
+        : IsColumn ? _owner.ColumnLossText(_material!, _info.Reinforcement)
+        : _material!.LossText;
 
     public string MaterialPlaceholder => UnknownMaterial ? $"¿{_info.MaterialId}?" : "Sin material";
 
@@ -128,6 +154,9 @@ public sealed class WallRowViewModel : ObservableObject
         OnPropertyChanged(nameof(UnknownMaterial));
         OnPropertyChanged(nameof(MaterialNote));
         OnPropertyChanged(nameof(MaterialPlaceholder));
+        OnPropertyChanged(nameof(IsColumn));
+        OnPropertyChanged(nameof(IsWall));
+        OnPropertyChanged(nameof(ColumnText));
     }
 
     internal void Revert() => Apply(_info, _owner.Option(_info.MaterialId));
@@ -157,10 +186,16 @@ public sealed class WallsViewModel : ObservableObject
     private MaterialOption? _bulkMaterial;
     private string _bulkThicknessText = "";
     private WallRowViewModel? _focusedRow;
+    private bool _isColumnKind;
+    private ReinforcementOption _bulkReinforcement;
 
     internal WallsViewModel(PanelViewModel owner)
     {
         _owner = owner;
+        ColumnReinforcement columns = owner.Service.ColumnReinforcement;
+        Reinforcements = [.. columns.Levels.Select(l => new ReinforcementOption(l))];
+        _bulkReinforcement = Reinforcements.FirstOrDefault(r => r.Level == Reinforcement.Medium) ?? Reinforcements[0];
+        ColumnMaterial = owner.Materials.FirstOrDefault(m => string.Equals(m.Id, columns.MaterialId, StringComparison.OrdinalIgnoreCase));
         PickInDrawingCommand = RelayCommand.Async(PickInDrawingAsync);
         ShowSelectionCommand = new RelayCommand(ShowSelection);
         SelectAllCommand = new RelayCommand(SelectAllVisible);
@@ -237,7 +272,50 @@ public sealed class WallsViewModel : ObservableObject
 
     public bool HasSelection => SelectedCount + ExtraSelectionCount > 0;
 
-    public string CountText => $"{_rows.Count} muro(s) · {MissingCount} sin material";
+    public int ColumnCount => _rows.Count(r => r.IsColumn);
+
+    public string CountText => ColumnCount == 0
+        ? $"{_rows.Count} muro(s) · {MissingCount} sin material"
+        : $"{_rows.Count - ColumnCount} muro(s) · {ColumnCount} columna(s) · {MissingCount} sin material";
+
+    public IReadOnlyList<ReinforcementOption> Reinforcements { get; }
+
+    /// <summary>Material fijo de las columnas; null si el catálogo no lo tiene.</summary>
+    public MaterialOption? ColumnMaterial { get; }
+
+    /// <summary>Tipo a asignar: muro (material y espesor) o columna (hormigón y nivel de armadura).</summary>
+    public bool IsWallKind
+    {
+        get => !_isColumnKind;
+        set { if (value) SetKind(column: false); }
+    }
+
+    public bool IsColumnKind
+    {
+        get => _isColumnKind;
+        set { if (value) SetKind(column: true); }
+    }
+
+    public ReinforcementOption BulkReinforcement
+    {
+        get => _bulkReinforcement;
+        set
+        {
+            if (value is not null && SetField(ref _bulkReinforcement, value)) OnPropertyChanged(nameof(ReinforcementText));
+        }
+    }
+
+    public string AssignHeading => _isColumnKind ? "Marcar la selección como columnas" : "Asignar a los muros seleccionados";
+
+    public string ColumnMaterialText => ColumnMaterial is { } m
+        ? $"Material: {m.Name} (fijo para las columnas)."
+        : "El catálogo no tiene el material de las columnas.";
+
+    /// <summary>Descripción del nivel elegido y pérdida total de la columna en cada banda.</summary>
+    public string ReinforcementText => ColumnMaterial is { } m
+        ? $"{_bulkReinforcement.Example}. Pérdida de la columna: {NumberText.Format(m.LossDb2_4 + _bulkReinforcement.AdditionalLossDb, "0.#")} dB a 2,4 GHz · " +
+          $"{NumberText.Format(m.LossDb5 + _bulkReinforcement.AdditionalLossDb, "0.#")} dB a 5 GHz. El adicional es una convención del proyecto."
+        : $"{_bulkReinforcement.Example}.";
 
     public string SelectionText => (SelectedCount, ExtraSelectionCount) switch
     {
@@ -273,9 +351,11 @@ public sealed class WallsViewModel : ObservableObject
 
     public async Task PickInDrawingAsync()
     {
-        await _owner.RunAsync(PanelMode.PickLines, async () =>
+        bool columns = _isColumnKind;
+        await _owner.RunAsync(columns ? PanelMode.PickColumns : PanelMode.PickLines, async () =>
         {
-            IReadOnlyList<string>? handles = await _owner.Interaction.PickEntitiesAsync("Seleccionar muros o líneas");
+            IReadOnlyList<string>? handles = await _owner.Interaction.PickEntitiesAsync(
+                columns ? "Seleccionar hatches o contornos de columna" : "Seleccionar muros o líneas", includeHatches: columns);
             if (handles is null)
             {
                 _owner.Report(StatusKind.Info, "Selección cancelada");
@@ -286,10 +366,63 @@ public sealed class WallsViewModel : ObservableObject
             foreach (WallRowViewModel row in _rows) row.SetSelected(chosen.Remove(row.Handle));
             _extraSelection = [.. chosen];
             OnSelectionChanged();
-            _owner.Report(StatusKind.Info, SelectionText, ExtraSelectionCount > 0
-                ? "Al asignarles material, las entidades nuevas pasan a la capa de muros."
-                : "");
+            _owner.Report(StatusKind.Info, SelectionText, ExtraSelectionCount == 0 ? ""
+                : columns ? "Al marcarlas, cada figura da una columna en la capa de muros; las originales no se modifican."
+                : "Al asignarles material, las entidades nuevas pasan a la capa de muros.");
         });
+    }
+
+    internal string ColumnText(Reinforcement? level) => level is { } known
+        ? $"Columna · armadura {Reinforcements.First(r => r.Level == known).Name.ToLower(NumberText.Es)}"
+        : "Columna · sin armadura";
+
+    internal string ColumnLossText(MaterialOption material, Reinforcement? level)
+    {
+        if (level is not { } known) return "Columna sin nivel de armadura.";
+
+        ReinforcementOption option = Reinforcements.First(r => r.Level == known);
+        return $"{material.Name} + armadura {option.Name.ToLower(NumberText.Es)}: " +
+               $"{NumberText.Format(material.LossDb2_4 + option.AdditionalLossDb, "0.#")} dB a 2,4 GHz · {NumberText.Format(material.LossDb5 + option.AdditionalLossDb, "0.#")} dB a 5 GHz";
+    }
+
+    /// <summary>Marca como columnas las figuras indicadas, con el nivel de armadura elegido. Devuelve si se generó alguna.</summary>
+    internal bool MarkColumns(IReadOnlyCollection<string> handles)
+    {
+        bool done = false;
+        _owner.Run(() => done = AssignColumns(handles));
+        return done;
+    }
+
+    private bool AssignColumns(IReadOnlyCollection<string> handles)
+    {
+        ReinforcementOption level = _bulkReinforcement;
+        OperationResult<ColumnGeneration> result = _owner.Service.AssignColumns(handles, level.Level);
+        if (result.Succeeded) _extraSelection = [];
+        _owner.Reload();
+        if (!result.Succeeded)
+        {
+            _owner.Report(result, "No se generaron columnas", "");
+            return false;
+        }
+
+        ColumnGeneration g = result.Value!;
+        Select(g.ColumnHandles);
+        string name = level.Name.ToLower(NumberText.Es);
+        string repeated = g.Duplicates == 0 ? "" : $", {g.Duplicates} figura(s) repetida(s) de la misma columna";
+        _owner.Report(result, "No se generaron columnas",
+            g.ColumnCount == 1 ? $"1 columna con armadura {name}" : $"{g.ColumnCount} columnas con armadura {name}",
+            $"{ColumnMaterial?.Name ?? "Hormigón"} + {NumberText.Format(g.AdditionalLossDb, "0.#")} dB. {g.Created} creada(s), {g.Kept} que ya existía(n){repeated}. Las figuras originales no se modificaron.");
+        return true;
+    }
+
+    private void SetKind(bool column)
+    {
+        if (_isColumnKind == column) return;
+
+        _isColumnKind = column;
+        OnPropertyChanged(nameof(IsWallKind));
+        OnPropertyChanged(nameof(IsColumnKind));
+        OnPropertyChanged(nameof(AssignHeading));
     }
 
     public void ShowSelection()
@@ -328,6 +461,12 @@ public sealed class WallsViewModel : ObservableObject
         if (handles.Length == 0)
         {
             _owner.Report(StatusKind.Warning, "No hay muros seleccionados", "Marcar filas de la tabla o usar «Seleccionar en el dibujo…».");
+            return;
+        }
+
+        if (_isColumnKind)
+        {
+            _owner.Run(() => AssignColumns(handles));
             return;
         }
 
@@ -423,6 +562,7 @@ public sealed class WallsViewModel : ObservableObject
         ApplyPath();
         OnPropertyChanged(nameof(HasWalls));
         OnPropertyChanged(nameof(MissingCount));
+        OnPropertyChanged(nameof(ColumnCount));
         OnPropertyChanged(nameof(CountText));
         OnSelectionChanged();
     }

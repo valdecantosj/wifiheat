@@ -122,6 +122,18 @@
                          Visibility="{Binding HasAxisSummary, Converter={StaticResource Visible}}" />
               <Button Style="{StaticResource LinkButton}" Margin="0,4,0,0" Content="{Binding UnpairedText}" Command="{Binding ShowUnpairedCommand}"
                       Visibility="{Binding HasUnpaired, Converter={StaticResource Visible}}" />
+              <Border Margin="0,8,0,0" Padding="8,6,8,8" BorderThickness="3,0,0,0" Background="{DynamicResource Message.Info.Background}"
+                      BorderBrush="{DynamicResource Message.Info.Accent}"
+                      Visibility="{Binding HasSmallFigures, Converter={StaticResource Visible}}">
+                <StackPanel>
+                  <TextBlock TextWrapping="Wrap" Text="{Binding SmallFiguresText}" />
+                  <WrapPanel Margin="0,6,0,0">
+                    <Button Content="Marcar como _columnas" Command="{Binding MarkColumnsCommand}" Margin="0,0,10,0"
+                            ToolTip="Crea una columna de hormigón por cada figura, con la armadura elegida en «3 · Estructuras». Las figuras originales no se modifican." />
+                    <Button Style="{StaticResource LinkButton}" VerticalAlignment="Center" Content="Ver en el dibujo" Command="{Binding ShowSmallFiguresCommand}" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
             </StackPanel>
           </Expander>
 
@@ -229,7 +241,7 @@
           </Expander>
 
           <!-- 3 · Estructuras -->
-          <Expander Header="3 · Estructuras (muros)" DataContext="{Binding Walls}" Tag="{Binding CountText}">
+          <Expander Header="3 · Estructuras (muros y columnas)" DataContext="{Binding Walls}" Tag="{Binding CountText}">
             <StackPanel>
               <TextBlock Style="{StaticResource Value}" Margin="0,2,0,0" FontWeight="SemiBold" Text="{Binding CountText}" />
               <WrapPanel Margin="0,6,0,2">
@@ -307,9 +319,14 @@
                               <TextBlock Grid.Column="3" Margin="4,0" VerticalAlignment="Center" Text="{Binding LengthText}" TextAlignment="Right" />
                               <ComboBox Grid.Column="4" Margin="2,2" ItemsSource="{Binding DataContext.Materials, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         SelectedItem="{Binding Material}" DisplayMemberPath="Name" Tag="{Binding MaterialPlaceholder}" ToolTip="{Binding MaterialNote}"
+                                        Visibility="{Binding IsWall, Converter={StaticResource Visible}}"
                                         AutomationProperties.Name="{Binding Handle, StringFormat='Material del muro {0}'}" />
                               <TextBox Grid.Column="5" Margin="2,2" Text="{Binding ThicknessText}"
+                                       Visibility="{Binding IsWall, Converter={StaticResource Visible}}"
                                        AutomationProperties.Name="{Binding Handle, StringFormat='Espesor del muro {0}'}" />
+                              <TextBlock Grid.Column="4" Grid.ColumnSpan="2" Margin="6,0,4,0" VerticalAlignment="Center" FontWeight="SemiBold"
+                                         Text="{Binding ColumnText}" ToolTip="{Binding MaterialNote}" TextTrimming="CharacterEllipsis"
+                                         Visibility="{Binding IsColumn, Converter={StaticResource Visible}}" />
                               <Ellipse x:Name="PathDot" Grid.Column="6" Width="10" Height="10" Fill="{DynamicResource Path.Mark}" Visibility="Collapsed"
                                        ToolTip="{Binding PathNote}" />
                             </Grid>
@@ -348,14 +365,36 @@
               </DockPanel>
               <WrapPanel Margin="0,4,0,0">
                 <Button Content="Seleccionar en el _dibujo…" Command="{Binding PickInDrawingCommand}" Margin="0,4,6,0"
-                        ToolTip="Elegir líneas o polilíneas en el dibujo. Las que todavía no son muros lo serán al asignarles material." />
+                        ToolTip="Elegir líneas o polilíneas en el dibujo. Las que todavía no son muros lo serán al asignarles material. Con el tipo Columna también se pueden elegir hatches." />
                 <Button Content="Ver selección" Command="{Binding ShowSelectionCommand}" IsEnabled="{Binding HasSelection}" Margin="0,4,0,0"
                         ToolTip="Selecciona en el dibujo los muros marcados y encuadra la vista." />
               </WrapPanel>
 
               <Border Style="{StaticResource Rule}" />
-              <TextBlock Style="{StaticResource SubHeading}" Text="Asignar a los muros seleccionados" />
-              <Grid>
+              <TextBlock Style="{StaticResource SubHeading}" Text="{Binding AssignHeading}" />
+              <WrapPanel Margin="0,0,0,4">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="Tipo" Margin="0,0,8,4" />
+                <RadioButton GroupName="ObstacleKind" Content="M_uro" IsChecked="{Binding IsWallKind}" Margin="0,0,12,4" />
+                <RadioButton GroupName="ObstacleKind" Content="C_olumna" IsChecked="{Binding IsColumnKind}" Margin="0,0,12,4"
+                             ToolTip="Columna de hormigón armado a partir de un hatch o de una polilínea cerrada de hasta 1,5 m de lado." />
+              </WrapPanel>
+              <StackPanel Visibility="{Binding IsColumnKind, Converter={StaticResource Visible}}">
+                <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,4" Text="{Binding ColumnMaterialText}" />
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="Armadura" />
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding Reinforcements}" SelectedItem="{Binding BulkReinforcement}" DisplayMemberPath="Label"
+                            AutomationProperties.Name="Nivel de armadura de la columna" />
+                  <Button Grid.Column="2" Style="{StaticResource Primary}" Margin="6,0,0,0" Content="_Asignar" Command="{Binding AssignCommand}"
+                          IsEnabled="{Binding HasSelection}" />
+                </Grid>
+                <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" Text="{Binding ReinforcementText}" />
+              </StackPanel>
+              <Grid Visibility="{Binding IsWallKind, Converter={StaticResource Visible}}">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*" />
                   <ColumnDefinition Width="Auto" />
@@ -374,7 +413,8 @@
                 <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource Primary}" Margin="6,0,0,0" Content="_Asignar" Command="{Binding AssignCommand}"
                         IsEnabled="{Binding HasSelection}" />
               </Grid>
-              <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" Text="{Binding MaterialLossText}" />
+              <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" Text="{Binding MaterialLossText}"
+                         Visibility="{Binding IsWallKind, Converter={StaticResource Visible}}" />
             </StackPanel>
           </Expander>
 

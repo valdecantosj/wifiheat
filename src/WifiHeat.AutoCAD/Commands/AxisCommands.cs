@@ -89,6 +89,7 @@ public sealed class AxisCommands
 
         PrintIds(ed, "Segmentos sin par", result.Unpaired);
         PrintIds(ed, "Segmentos con tramos sin par de más de 0,5 m", result.PartlyUnpaired);
+        PrintIds(ed, "Figuras cerradas pequeñas que no se usaron como caras (posibles columnas; marcarlas con WIFIWALL y «columna»)", result.SmallClosedFigures);
         ed.WriteMessage("\n");
     });
 

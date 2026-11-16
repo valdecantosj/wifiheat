@@ -222,7 +222,7 @@ public class MessagesAndModeTests
 
         public Task<BoundingBox?> PickWindowAsync(string prompt) => Wait<BoundingBox?>(new BoundingBox(new Vec2(0, 0), new Vec2(1, 1)));
 
-        public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt) => Wait<IReadOnlyList<string>?>(["A1"]);
+        public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt, bool includeHatches = false) => Wait<IReadOnlyList<string>?>(["A1"]);
 
         public Task<string?> PickPolylineAsync(string prompt) => Wait<string?>("P1");
 

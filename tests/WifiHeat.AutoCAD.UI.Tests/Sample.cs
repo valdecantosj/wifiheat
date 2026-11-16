@@ -16,6 +16,7 @@ internal sealed class FakeInteraction : IDrawingInteraction
     public Action? OnYield { get; set; }
     public List<(string[] Handles, bool Zoom)> Shown { get; } = [];
     public List<string> Prompts { get; } = [];
+    public List<bool> HatchRequests { get; } = [];
     public List<string> SuggestedPaths { get; } = [];
 
     public Task<Vec2?> PickPointAsync(string prompt)
@@ -30,9 +31,10 @@ internal sealed class FakeInteraction : IDrawingInteraction
         return Task.FromResult(Window);
     }
 
-    public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt)
+    public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt, bool includeHatches = false)
     {
         Prompts.Add(prompt);
+        HatchRequests.Add(includeHatches);
         return Task.FromResult(Entities);
     }
 
@@ -67,12 +69,13 @@ internal sealed class FakeInteraction : IDrawingInteraction
 
 internal sealed class Sample
 {
-    public FakeDrawing Drawing { get; } = new();
+    public FakeDrawing Drawing { get; }
     public FakeInteraction Interaction { get; } = new();
     public PanelViewModel Panel { get; }
 
-    private Sample(Action<FakeDrawing> arrange)
+    private Sample(Action<FakeDrawing> arrange, bool concrete = false)
     {
+        Drawing = concrete ? new FakeDrawing(FakeDrawing.CatalogWithConcrete) : new FakeDrawing();
         arrange(Drawing);
         Panel = new PanelViewModel(Drawing, Interaction, "casa.dwg");
         Panel.Refresh();
@@ -81,6 +84,8 @@ internal sealed class Sample
     public static Sample Empty() => new(_ => { });
 
     public static Sample Custom(Action<FakeDrawing> arrange) => new(arrange);
+
+    public static Sample WithConcrete(Action<FakeDrawing> arrange) => new(arrange, concrete: true);
 
     public static Sample Room(string? material = "brick") => new(d => AddRoom(d, material));
 

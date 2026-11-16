@@ -358,7 +358,7 @@ public class QueryExportAndPanelTests
         public string? BusyReason => null;
         public Task<Vec2?> PickPointAsync(string prompt) => point;
         public Task<BoundingBox?> PickWindowAsync(string prompt) => Task.FromResult<BoundingBox?>(null);
-        public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt) => Task.FromResult<IReadOnlyList<string>?>(null);
+        public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt, bool includeHatches = false) => Task.FromResult<IReadOnlyList<string>?>(null);
         public Task<string?> PickPolylineAsync(string prompt) => Task.FromResult<string?>(null);
         public void CancelPrompt() => Cancelled++;
         public int Cancelled { get; private set; }
