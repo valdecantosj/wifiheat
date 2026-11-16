@@ -79,6 +79,16 @@ Notas:
 - `demo.scr` ejecuta además `NETLOAD` con la ruta relativa a `demo.dwg`, así que el paso 2 solo es imprescindible si ese `NETLOAD` es bloqueado.
 - No desactivar `SECURELOAD`.
 
+## Guía de uso
+
+Recorrido paso a paso sobre `samples/demo.dwg`, configuración del punto de acceso, lectura de los colores y problemas frecuentes: [docs/guia-de-uso.md](docs/guia-de-uso.md).
+
+## Ramas
+
+- `main`: versión estable con el panel.
+- `dev/stable`: versión de la entrega, con el doble conteo resuelto, las columnas con armadura y el mapa del efecto de la armadura.
+- `feature/diffraction` y `feature/reflection`: trabajo futuro (difracción y reflexiones).
+
 ## Estructura
 
 - `src/WifiHeat.Core`: modelo de propagación, geometría, materiales y grilla; no depende de AutoCAD.
