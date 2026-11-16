@@ -14,7 +14,7 @@ public sealed class DiagnosticCommands
     {
         Editor ed = doc.Editor;
         ed.WriteMessage($"\nWifiHeat {WifiHeatApplication.Version} · .NET {Environment.Version}");
-        ed.WriteMessage("\nFlujo: WIFISETUP, WIFIEJES (opcional, muros de doble cara), WIFIWALL, WIFIVALIDATE, WIFIADDAP, WIFIAREA (opcional), WIFICALCULATE, WIFIQUERY, WIFIEXPORT.");
+        ed.WriteMessage("\nFlujo: WIFISETUP, WIFIEJES (opcional, muros de doble cara), WIFIWALL (material de muros o «columna»), WIFIVALIDATE, WIFIADDAP, WIFIAREA (opcional), WIFICALCULATE, WIFIQUERY, WIFIEXPORT.");
         ed.WriteMessage("\nPanel: WIFIPANEL (cargar también WifiHeat.AutoCAD.UI.dll; solo en AutoCAD con interfaz).");
         ed.WriteMessage("\nDiagnóstico: WIFIINFO.\n");
     });
