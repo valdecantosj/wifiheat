@@ -224,10 +224,10 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         if (notFound.Length > 0) warnings.Add($"No se encontraron en el dibujo: {string.Join(", ", notFound)}.");
         if (tooLarge.Count > 0)
         {
-            warnings.Add(string.Create(Es, $"No parece una columna (más de {ColumnRules.MaxSideM:0.#} m de lado), no se generó: {string.Join(", ", tooLarge)}."));
+            warnings.Add(string.Create(Es, $"No parece una columna (más de {ColumnRules.MaxSideM:0.#} m de lado), no se generó: {string.Join(", ", tooLarge.Distinct())}."));
         }
 
-        if (invalid.Count > 0) warnings.Add($"{ValidationIssue.InvalidGeometry}: {string.Join("; ", invalid)}.");
+        if (invalid.Count > 0) warnings.Add($"{ValidationIssue.InvalidGeometry}: {string.Join("; ", invalid.Distinct())}.");
 
         if (create.Count == 0 && update.Count == 0)
         {
@@ -577,7 +577,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
             if (seen.Any(p => ColumnRules.SameFootprint(p, polygon))) continue;
 
             seen.Add(polygon);
-            if (!existing.Any(c => ColumnRules.SameFootprint(c.Footprint, polygon))) handles.Add(figure.Handle);
+            if (!existing.Any(c => ColumnRules.SameFootprint(c.Footprint, polygon)) && !handles.Contains(figure.Handle)) handles.Add(figure.Handle);
         }
 
         return handles;
@@ -646,7 +646,8 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
     /// <summary>
     /// Hatches, polilíneas cerradas y columnas con esos handles, con su contorno en metros.
-    /// Un hatch con arcos o con más de un bucle, o una entidad de otro tipo, vuelve sin contorno y con el motivo.
+    /// Un hatch con varios contornos separados da una figura por contorno, todas con su handle.
+    /// Un hatch con arcos o con islas, o una entidad de otro tipo, vuelve sin contorno y con el motivo.
     /// </summary>
     protected abstract IReadOnlyList<ClosedFigure> ReadClosedFigures(IReadOnlyCollection<string> handles);
 

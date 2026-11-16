@@ -164,7 +164,7 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
         DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
         foreach (string handle in handles)
         {
-            if (TryOpen(tr, handle, out Entity? entity)) result.Add(ColumnReader.Read(entity!, unit));
+            if (TryOpen(tr, handle, out Entity? entity)) result.AddRange(ColumnReader.Read(entity!, unit));
         }
 
         tr.Commit();

@@ -6,34 +6,37 @@ using WifiHeat.Core.Service;
 
 namespace WifiHeat.AutoCAD.Reading;
 
-/// <summary>Figuras cerradas del plano que pueden ser columnas: hatches de un solo contorno recto y polilíneas cerradas.</summary>
+/// <summary>
+/// Figuras cerradas del plano que pueden ser columnas: polilíneas cerradas y hatches de contornos rectos.
+/// Un hatch con varios contornos separados da una figura por contorno; con un contorno dentro de otro (islas) o con arcos, ninguna.
+/// </summary>
 public static class ColumnReader
 {
     private const double ClosedToleranceM = 1e-6;
 
-    /// <summary>Contorno de la entidad en metros, o el motivo por el que no sirve como columna.</summary>
-    public static ClosedFigure Read(Entity entity, DrawingUnit unit)
+    /// <summary>Contornos de la entidad en metros, o una sola figura sin contorno con el motivo por el que no sirve.</summary>
+    public static IReadOnlyList<ClosedFigure> Read(Entity entity, DrawingUnit unit)
     {
         string handle = entity.Handle.ToString();
         string kind = entity.GetRXClass().DxfName;
         bool isColumn = string.Equals(entity.Layer, WifiHeatNames.WallLayer, StringComparison.OrdinalIgnoreCase) && WifiXData.IsColumn(entity);
 
-        Polygon2? polygon = null;
         string? error;
         switch (entity)
         {
             case Hatch hatch:
-                polygon = HatchContour(hatch, unit, out error);
+                List<Polygon2>? contours = HatchContours(hatch, unit, out error);
+                if (contours is not null) return [.. contours.Select(c => new ClosedFigure(handle, kind, c, null, isColumn))];
                 break;
             case Polyline polyline:
-                AreaReader.TryPolygon(polyline, unit, out polygon, out error);
+                if (AreaReader.TryPolygon(polyline, unit, out Polygon2? polygon, out error)) return [new ClosedFigure(handle, kind, polygon, null, isColumn)];
                 break;
             default:
                 error = "no es un hatch ni una polilínea cerrada";
                 break;
         }
 
-        return new ClosedFigure(handle, kind, polygon, error, isColumn);
+        return [new ClosedFigure(handle, kind, null, error, isColumn)];
     }
 
     /// <summary>Hatches y polilíneas cerradas con todos sus vértices dentro de la zona, fuera de las capas propias.</summary>
@@ -47,11 +50,13 @@ public static class ColumnReader
             if (entity.Layer.StartsWith("WIFIHEAT_", StringComparison.OrdinalIgnoreCase)) continue;
             if (entity is Polyline polyline && !IsClosed(polyline, unit)) continue;
 
-            ClosedFigure figure = Read(entity, unit);
-            if (figure.Polygon is null) continue;
+            foreach (ClosedFigure figure in Read(entity, unit))
+            {
+                if (figure.Polygon is null) continue;
 
-            BoundingBox b = figure.Polygon.Bounds;
-            if (b.Min.X >= window.Min.X && b.Min.Y >= window.Min.Y && b.Max.X <= window.Max.X && b.Max.Y <= window.Max.Y) figures.Add(figure);
+                BoundingBox b = figure.Polygon.Bounds;
+                if (b.Min.X >= window.Min.X && b.Min.Y >= window.Min.Y && b.Max.X <= window.Max.X && b.Max.Y <= window.Max.Y) figures.Add(figure);
+            }
         }
 
         return figures;
@@ -70,10 +75,10 @@ public static class ColumnReader
     }
 
     /// <summary>
-    /// Contorno de un hatch de un solo bucle formado por tramos rectos. Los puntos del bucle están en el plano del hatch;
+    /// Contornos de un hatch formado solo por tramos rectos. Los puntos de cada bucle están en el plano del hatch;
     /// se llevan a coordenadas universales con su normal y su elevación.
     /// </summary>
-    private static Polygon2? HatchContour(Hatch hatch, DrawingUnit unit, out string? error)
+    private static List<Polygon2>? HatchContours(Hatch hatch, DrawingUnit unit, out string? error)
     {
         if (hatch.NumberOfLoops == 0)
         {
@@ -81,24 +86,55 @@ public static class ColumnReader
             return null;
         }
 
-        if (hatch.NumberOfLoops > 1)
+        Matrix3d toWorld = Matrix3d.PlaneToWorld(hatch.Normal);
+        var contours = new List<Polygon2>(hatch.NumberOfLoops);
+        for (int i = 0; i < hatch.NumberOfLoops; i++)
         {
-            error = "tiene islas o más de un contorno";
-            return null;
+            List<Point2d>? points = LoopPoints(hatch.GetLoopAt(i));
+            if (points is null)
+            {
+                error = "tiene arcos o curvas (solo se admiten tramos rectos)";
+                return null;
+            }
+
+            try
+            {
+                contours.Add(new Polygon2(points.Select(p =>
+                {
+                    Point3d world = new Point3d(p.X, p.Y, hatch.Elevation).TransformBy(toWorld);
+                    return DrawingUnits.ToMetres(unit, world.X, world.Y);
+                })));
+            }
+            catch (ArgumentException)
+            {
+                error = "tiene un contorno que no encierra superficie";
+                return null;
+            }
         }
 
+        for (int i = 0; i < contours.Count; i++)
+        {
+            for (int j = 0; j < contours.Count; j++)
+            {
+                if (i == j || !contours[j].Contains(contours[i].Vertices[0])) continue;
+
+                error = "tiene islas (un contorno dentro de otro)";
+                return null;
+            }
+        }
+
+        error = null;
+        return contours;
+    }
+
+    private static List<Point2d>? LoopPoints(HatchLoop loop)
+    {
         var points = new List<Point2d>();
-        HatchLoop loop = hatch.GetLoopAt(0);
         if (loop.IsPolyline)
         {
             foreach (BulgeVertex vertex in loop.Polyline)
             {
-                if (vertex.Bulge != 0)
-                {
-                    error = "tiene arcos (solo se admiten tramos rectos)";
-                    return null;
-                }
-
+                if (vertex.Bulge != 0) return null;
                 points.Add(vertex.Vertex);
             }
         }
@@ -106,30 +142,11 @@ public static class ColumnReader
         {
             foreach (Curve2d curve in loop.Curves)
             {
-                if (curve is not LineSegment2d line)
-                {
-                    error = "tiene arcos o curvas (solo se admiten tramos rectos)";
-                    return null;
-                }
-
+                if (curve is not LineSegment2d line) return null;
                 points.Add(line.StartPoint);
             }
         }
 
-        Matrix3d toWorld = Matrix3d.PlaneToWorld(hatch.Normal);
-        try
-        {
-            error = null;
-            return new Polygon2(points.Select(p =>
-            {
-                Point3d world = new Point3d(p.X, p.Y, hatch.Elevation).TransformBy(toWorld);
-                return DrawingUnits.ToMetres(unit, world.X, world.Y);
-            }));
-        }
-        catch (ArgumentException)
-        {
-            error = "no encierra superficie";
-            return null;
-        }
+        return points;
     }
 }
