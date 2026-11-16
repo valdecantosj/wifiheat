@@ -89,8 +89,10 @@
               <Border Style="{StaticResource Rule}" />
               <TextBlock Style="{StaticResource SubHeading}" Text="Ejes de muros dibujados con dos caras" />
               <WrapPanel>
-                <Button Content="Elegir _zona de la planta…" Command="{Binding PickWindowCommand}" Margin="0,0,12,4"
+                <Button Content="Elegir _zona de la planta…" Command="{Binding PickWindowCommand}" Margin="0,0,6,4"
                         ToolTip="Marcá con dos clics el rectángulo que encierra una sola planta." />
+                <Button Content="Elegir líneas…" Command="{Binding PickLinesCommand}" Margin="0,0,12,4"
+                        ToolTip="Genera ejes solo entre las líneas que elijas en el dibujo, sin importar su capa. Sirve cuando las caras de un muro están en capas distintas o la zona toma líneas de más." />
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                   <TextBlock Style="{StaticResource FieldLabel}" Text="Unir tramos hasta (m)" Margin="0,0,6,0" />
                   <TextBox Width="52" Text="{Binding MergeGapText}" AutomationProperties.Name="Umbral de unión en metros"
@@ -128,7 +130,7 @@
                 <StackPanel>
                   <TextBlock TextWrapping="Wrap" Text="{Binding SmallFiguresText}" />
                   <WrapPanel Margin="0,6,0,0">
-                    <Button Content="Marcar como _columnas" Command="{Binding MarkColumnsCommand}" Margin="0,0,10,0"
+                    <Button Content="Marcar como columnas" Command="{Binding MarkColumnsCommand}" Margin="0,0,10,0"
                             ToolTip="Crea una columna de hormigón por cada figura, con la armadura elegida en «3 · Estructuras». Las figuras originales no se modifican." />
                     <Button Style="{StaticResource LinkButton}" VerticalAlignment="Center" Content="Ver en el dibujo" Command="{Binding ShowSmallFiguresCommand}" />
                   </WrapPanel>
@@ -233,7 +235,7 @@
                       Visibility="{Binding HasDoubleCount, Converter={StaticResource Visible}}">
                 <StackPanel>
                   <TextBlock TextWrapping="Wrap" Text="{Binding DoubleCountText}" />
-                  <Button Margin="0,6,0,0" HorizontalAlignment="Left" Content="_Convertir en ejes" Command="{Binding ConvertParallelCommand}"
+                  <Button Margin="0,6,0,0" HorizontalAlignment="Left" Content="Convertir en ejes" Command="{Binding ConvertParallelCommand}"
                           ToolTip="Crea un eje por muro con el material de las caras y pasa las caras a la capa WIFIHEAT_CARAS, que no se lee como muro." />
                 </StackPanel>
               </Border>
@@ -374,8 +376,8 @@
               <TextBlock Style="{StaticResource SubHeading}" Text="{Binding AssignHeading}" />
               <WrapPanel Margin="0,0,0,4">
                 <TextBlock Style="{StaticResource FieldLabel}" Text="Tipo" Margin="0,0,8,4" />
-                <RadioButton GroupName="ObstacleKind" Content="M_uro" IsChecked="{Binding IsWallKind}" Margin="0,0,12,4" />
-                <RadioButton GroupName="ObstacleKind" Content="C_olumna" IsChecked="{Binding IsColumnKind}" Margin="0,0,12,4"
+                <RadioButton GroupName="ObstacleKind" Content="Muro" IsChecked="{Binding IsWallKind}" Margin="0,0,12,4" />
+                <RadioButton GroupName="ObstacleKind" Content="Columna" IsChecked="{Binding IsColumnKind}" Margin="0,0,12,4"
                              ToolTip="Columna de hormigón armado a partir de un hatch o de una polilínea cerrada de hasta 1,5 m de lado." />
               </WrapPanel>
               <StackPanel Visibility="{Binding IsColumnKind, Converter={StaticResource Visible}}">

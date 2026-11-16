@@ -58,6 +58,7 @@ public sealed class PrepareViewModel : ObservableObject
         _owner = owner;
         PickWindowCommand = RelayCommand.Async(PickWindowAsync);
         GenerateAxesCommand = new RelayCommand(GenerateAxes);
+        PickLinesCommand = RelayCommand.Async(PickLinesAsync);
         ShowUnpairedCommand = new RelayCommand(ShowUnpaired);
         MarkColumnsCommand = new RelayCommand(MarkColumns);
         ShowSmallFiguresCommand = new RelayCommand(ShowSmallFigures);
@@ -75,6 +76,9 @@ public sealed class PrepareViewModel : ObservableObject
     public RelayCommand PickWindowCommand { get; }
 
     public RelayCommand GenerateAxesCommand { get; }
+
+    /// <summary>Genera ejes solo entre las líneas elegidas en el dibujo, sin importar su capa.</summary>
+    public RelayCommand PickLinesCommand { get; }
 
     public RelayCommand ShowUnpairedCommand { get; }
 
@@ -215,6 +219,37 @@ public sealed class PrepareViewModel : ObservableObject
             }
 
             ShowGeneration(result, "No hay pares de caras paralelas en las capas marcadas.");
+        });
+    }
+
+    public async Task PickLinesAsync()
+    {
+        if (!_owner.RequireUnit()) return;
+        if (!TryGetMergeGap(out double gap)) return;
+
+        await _owner.RunAsync(PanelMode.PickFaces, async () =>
+        {
+            IReadOnlyList<string>? handles = await _owner.Interaction.PickEntitiesAsync("Seleccionar las líneas de las caras de los muros");
+            if (handles is null)
+            {
+                _owner.Report(StatusKind.Info, "Selección de líneas cancelada");
+                return;
+            }
+
+            if (handles.Count == 0)
+            {
+                _owner.Report(StatusKind.Warning, "No se eligió ninguna línea", "Elegir las líneas de las dos caras de cada muro.");
+                return;
+            }
+
+            OperationResult<AxisGeneration> result = _owner.Service.GenerateAxesFromSelection(handles, gap);
+            if (!result.Succeeded)
+            {
+                _owner.Report(result, "No se generaron ejes", "");
+                return;
+            }
+
+            ShowGeneration(result, "No hay pares de caras paralelas entre las líneas elegidas.");
         });
     }
 

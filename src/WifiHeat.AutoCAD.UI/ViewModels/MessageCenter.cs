@@ -136,6 +136,8 @@ public sealed record PanelMode(string Name, string Instruction)
 
     public static PanelMode PickLines { get; } = new("Elegir líneas o muros", "Seleccioná líneas o polilíneas en el dibujo y terminá con Enter.");
 
+    public static PanelMode PickFaces { get; } = new("Elegir líneas", "Seleccioná las líneas de las caras de los muros, de cualquier capa, y terminá con Enter.");
+
     public static PanelMode PickColumns { get; } = new("Elegir columnas", "Seleccioná los hatches o los contornos cerrados de las columnas y terminá con Enter.");
 
     public static PanelMode PlaceAccessPoint { get; } = new("Ubicar punto de acceso", "Hacé clic en el dibujo donde va el punto de acceso.");
