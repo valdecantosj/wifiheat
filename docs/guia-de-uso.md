@@ -53,9 +53,7 @@ En `demo.dwg` no hay nada para listar: los muros ya son ejes y las capas `WIFIHE
 
 **Ejercicio.** En una copia, crear la capa `muros` y dibujar dos líneas paralelas separadas 0,20 m, por ejemplo de (15; 0) a (15; 3) y de (15,2; 0) a (15,2; 3). Elegir una zona que las encierre: el panel muestra la capa `muros` con 2 segmentos y 1 eje.
 
-![Zona de la planta marcada con un rectángulo](img/03-zona-planta.png)
-
-![Capas de la zona listadas en el panel](img/04-capas-zona.png)
+![Zona de la planta marcada con un rectángulo y Capas de la zona listadas en el panel](img/03_y_04-zona-planta-capa.png)
 
 ### 5. Generar los ejes
 
