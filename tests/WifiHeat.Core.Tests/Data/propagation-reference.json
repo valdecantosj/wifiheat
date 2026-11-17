@@ -1,0 +1,2229 @@
+{
+ "description": "Valores de referencia del modelo de propagación. P_TX = 20 dBm, sin ganancias ni pérdidas de cable. RSSI en dBm.",
+ "txPowerDbm": 20.0,
+ "maxDiffractions": 3,
+ "toleranceDb": 0.02,
+ "knifeEdge": [
+  {
+   "nu": -1.0,
+   "lossDb": 0.0
+  },
+  {
+   "nu": -0.78,
+   "lossDb": 0.0
+  },
+  {
+   "nu": -0.5,
+   "lossDb": 1.9592
+  },
+  {
+   "nu": -0.2,
+   "lossDb": 4.3318
+  },
+  {
+   "nu": 0.0,
+   "lossDb": 6.0329
+  },
+  {
+   "nu": 0.3,
+   "lossDb": 8.6258
+  },
+  {
+   "nu": 0.5,
+   "lossDb": 10.2878
+  },
+  {
+   "nu": 1.0,
+   "lossDb": 13.9257
+  },
+  {
+   "nu": 2.4,
+   "lossDb": 20.5393
+  },
+  {
+   "nu": 5.0,
+   "lossDb": 26.8136
+  },
+  {
+   "nu": 10.0,
+   "lossDb": 32.8554
+  }
+ ],
+ "reflectance": [
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "2.4GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.156294,
+   "lossDb": 8.0606
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "2.4GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.19772,
+   "lossDb": 7.0395
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "2.4GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.263152,
+   "lossDb": 5.7979
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "2.4GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.385745,
+   "lossDb": 4.137
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "2.4GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.608647,
+   "lossDb": 2.1563
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "5GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.155368,
+   "lossDb": 8.0864
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "5GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.196703,
+   "lossDb": 7.0619
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "5GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.262044,
+   "lossDb": 5.8163
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "5GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.384599,
+   "lossDb": 4.1499
+  },
+  {
+   "material": "concrete",
+   "thicknessM": 0.2,
+   "band": "5GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.607735,
+   "lossDb": 2.1629
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "2.4GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.156043,
+   "lossDb": 8.0675
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "2.4GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.197472,
+   "lossDb": 7.0449
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "2.4GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.262916,
+   "lossDb": 5.8018
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "2.4GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.385543,
+   "lossDb": 4.1393
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "2.4GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.608533,
+   "lossDb": 2.1572
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "5GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.155367,
+   "lossDb": 8.0864
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "5GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.196702,
+   "lossDb": 7.0619
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "5GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.262043,
+   "lossDb": 5.8163
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "5GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.384598,
+   "lossDb": 4.1499
+  },
+  {
+   "material": "concrete",
+   "thicknessM": null,
+   "band": "5GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.607734,
+   "lossDb": 2.1629
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "2.4GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.126082,
+   "lossDb": 8.9935
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "2.4GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.163171,
+   "lossDb": 7.8736
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "2.4GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.223659,
+   "lossDb": 6.5041
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "2.4GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.341572,
+   "lossDb": 4.6652
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "2.4GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.566472,
+   "lossDb": 2.4682
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "5GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.122511,
+   "lossDb": 9.1183
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "5GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.158912,
+   "lossDb": 7.9884
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "5GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.218568,
+   "lossDb": 6.6041
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "5GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.335763,
+   "lossDb": 4.7397
+  },
+  {
+   "material": "solid-brick",
+   "thicknessM": 0.15,
+   "band": "5GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.561856,
+   "lossDb": 2.5037
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "2.4GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.082772,
+   "lossDb": 10.8212
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "2.4GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.112603,
+   "lossDb": 9.4845
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "2.4GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.164685,
+   "lossDb": 7.8335
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "2.4GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.275364,
+   "lossDb": 5.6009
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "2.4GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.506344,
+   "lossDb": 2.9555
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "5GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.069504,
+   "lossDb": 11.5799
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "5GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.095276,
+   "lossDb": 10.2101
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "5GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.141274,
+   "lossDb": 8.4994
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "5GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.243139,
+   "lossDb": 6.1415
+  },
+  {
+   "material": "drywall",
+   "thicknessM": 0.1,
+   "band": "5GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.472927,
+   "lossDb": 3.2521
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "2.4GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.309984,
+   "lossDb": 5.0866
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "2.4GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.370658,
+   "lossDb": 4.3103
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "2.4GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.455927,
+   "lossDb": 3.411
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "2.4GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.589513,
+   "lossDb": 2.2951
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "2.4GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.774178,
+   "lossDb": 1.1116
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "5GHz",
+   "angleDeg": 0,
+   "powerReflectance": 0.305296,
+   "lossDb": 5.1528
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "5GHz",
+   "angleDeg": 30,
+   "powerReflectance": 0.365156,
+   "lossDb": 4.3752
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "5GHz",
+   "angleDeg": 45,
+   "powerReflectance": 0.449405,
+   "lossDb": 3.4736
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "5GHz",
+   "angleDeg": 60,
+   "powerReflectance": 0.581726,
+   "lossDb": 2.3528
+  },
+  {
+   "material": "glass",
+   "thicknessM": 0.006,
+   "band": "5GHz",
+   "angleDeg": 75,
+   "powerReflectance": 0.765502,
+   "lossDb": 1.1605
+  }
+ ],
+ "scenes": [
+  {
+   "name": "columna-sola",
+   "band": "5GHz",
+   "ap": [
+    -3,
+    0.15
+   ],
+   "obstacles": [
+    {
+     "id": "C",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "medium",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0.3,
+       0
+      ],
+      [
+       0.3,
+       0.3
+      ],
+      [
+       0,
+       0.3
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 3.3,
+     "y": 0.15,
+     "straightLine": -92.523,
+     "diffraction": -54.249,
+     "diffractionAndReflection": -54.249,
+     "pathCount": 5
+    },
+    {
+     "x": 3.3,
+     "y": 0.3,
+     "straightLine": -92.526,
+     "diffraction": -52.389,
+     "diffractionAndReflection": -52.389,
+     "pathCount": 3
+    },
+    {
+     "x": 3.3,
+     "y": 0.45,
+     "straightLine": -92.533,
+     "diffraction": -49.819,
+     "diffractionAndReflection": -49.819,
+     "pathCount": 3
+    },
+    {
+     "x": 3.3,
+     "y": 0.6,
+     "straightLine": -42.746,
+     "diffraction": -46.612,
+     "diffractionAndReflection": -46.612,
+     "pathCount": 2
+    },
+    {
+     "x": 3.3,
+     "y": 1.0,
+     "straightLine": -42.802,
+     "diffraction": -42.786,
+     "diffractionAndReflection": -42.786,
+     "pathCount": 2
+    },
+    {
+     "x": 1.0,
+     "y": 0.15,
+     "straightLine": -88.578,
+     "diffraction": -54.081,
+     "diffractionAndReflection": -54.081,
+     "pathCount": 3
+    },
+    {
+     "x": 6.0,
+     "y": 0.15,
+     "straightLine": -95.621,
+     "diffraction": -55.96,
+     "diffractionAndReflection": -55.96,
+     "pathCount": 3
+    },
+    {
+     "x": 0.5,
+     "y": -0.025,
+     "straightLine": -87.429,
+     "diffraction": -45.6,
+     "diffractionAndReflection": -45.6,
+     "pathCount": 2
+    },
+    {
+     "x": 3.3,
+     "y": -0.4,
+     "straightLine": -42.756,
+     "diffraction": -44.685,
+     "diffractionAndReflection": -44.685,
+     "pathCount": 2
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0.3,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0.3,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    }
+   ]
+  },
+  {
+   "name": "columna-sola-2g4",
+   "band": "2.4GHz",
+   "ap": [
+    -3,
+    0.15
+   ],
+   "obstacles": [
+    {
+     "id": "C",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "high",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0.3,
+       0
+      ],
+      [
+       0.3,
+       0.3
+      ],
+      [
+       0,
+       0.3
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 3.3,
+     "y": 0.15,
+     "straightLine": -66.474,
+     "diffraction": -45.535,
+     "diffractionAndReflection": -45.535,
+     "pathCount": 5
+    },
+    {
+     "x": 3.3,
+     "y": 0.45,
+     "straightLine": -66.484,
+     "diffraction": -43.001,
+     "diffractionAndReflection": -43.001,
+     "pathCount": 3
+    },
+    {
+     "x": 1.0,
+     "y": 0.15,
+     "straightLine": -62.528,
+     "diffraction": -44.673,
+     "diffractionAndReflection": -44.673,
+     "pathCount": 3
+    },
+    {
+     "x": 6.0,
+     "y": 0.4,
+     "straightLine": -69.575,
+     "diffraction": -46.852,
+     "diffractionAndReflection": -46.852,
+     "pathCount": 3
+    }
+   ],
+   "frequencyMHz": 2437.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 30.3
+    },
+    {
+     "x": 0.3,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 30.3
+    },
+    {
+     "x": 0.3,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 30.3
+    },
+    {
+     "x": 0,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 30.3
+    }
+   ]
+  },
+  {
+   "name": "columna-alineada",
+   "band": "5GHz",
+   "ap": [
+    -3,
+    0.0
+   ],
+   "obstacles": [
+    {
+     "id": "C",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "medium",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0.3,
+       0
+      ],
+      [
+       0.3,
+       0.3
+      ],
+      [
+       0,
+       0.3
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 3.3,
+     "y": 0.0,
+     "straightLine": -92.523,
+     "diffraction": -49.872,
+     "diffractionAndReflection": -49.872,
+     "pathCount": 3
+    },
+    {
+     "x": 3.3,
+     "y": 0.001,
+     "straightLine": -92.523,
+     "diffraction": -49.892,
+     "diffractionAndReflection": -49.892,
+     "pathCount": 4
+    },
+    {
+     "x": 3.3,
+     "y": -0.001,
+     "straightLine": -42.723,
+     "diffraction": -49.849,
+     "diffractionAndReflection": -49.849,
+     "pathCount": 3
+    },
+    {
+     "x": 3.3,
+     "y": 0.15,
+     "straightLine": -92.526,
+     "diffraction": -52.389,
+     "diffractionAndReflection": -52.389,
+     "pathCount": 3
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0.3,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0.3,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    }
+   ]
+  },
+  {
+   "name": "extremo-de-muro",
+   "band": "5GHz",
+   "ap": [
+    -3,
+    2
+   ],
+   "obstacles": [
+    {
+     "id": "W",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       50
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 3,
+     "y": 2,
+     "straightLine": -87.1,
+     "diffraction": -75.77,
+     "diffractionAndReflection": -75.77,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": 0.5,
+     "straightLine": -87.363,
+     "diffraction": -71.02,
+     "diffractionAndReflection": -71.02,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": 0.05,
+     "straightLine": -87.536,
+     "diffraction": -69.066,
+     "diffractionAndReflection": -69.066,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": -0.05,
+     "straightLine": -87.579,
+     "diffraction": -68.583,
+     "diffractionAndReflection": -68.583,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": -0.5,
+     "straightLine": -87.795,
+     "diffraction": -66.106,
+     "diffractionAndReflection": -66.106,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": -2,
+     "straightLine": -88.697,
+     "diffraction": -49.929,
+     "diffractionAndReflection": -49.929,
+     "pathCount": 2
+    },
+    {
+     "x": 3,
+     "y": -4,
+     "straightLine": -45.31,
+     "diffraction": -45.31,
+     "diffractionAndReflection": -45.31,
+     "pathCount": 2
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 360.0,
+     "lossDb": 44.8
+    },
+    {
+     "x": 0,
+     "y": 50,
+     "freeSectorDeg": 360.0,
+     "lossDb": 44.8
+    }
+   ]
+  },
+  {
+   "name": "extremo-de-vidrio",
+   "band": "5GHz",
+   "ap": [
+    -3,
+    2
+   ],
+   "obstacles": [
+    {
+     "id": "G",
+     "kind": "wall",
+     "material": "glass",
+     "thicknessM": 0.006,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       50
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 3,
+     "y": 2,
+     "straightLine": -45.8,
+     "diffraction": -45.8,
+     "diffractionAndReflection": -45.8,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": 0.05,
+     "straightLine": -46.236,
+     "diffraction": -46.223,
+     "diffractionAndReflection": -46.223,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": -0.05,
+     "straightLine": -46.279,
+     "diffraction": -46.265,
+     "diffractionAndReflection": -46.265,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": -2,
+     "straightLine": -47.397,
+     "diffraction": -46.228,
+     "diffractionAndReflection": -46.228,
+     "pathCount": 2
+    },
+    {
+     "x": 3,
+     "y": -4,
+     "straightLine": -45.31,
+     "diffraction": -45.31,
+     "diffractionAndReflection": -45.31,
+     "pathCount": 2
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 360.0,
+     "lossDb": 3.5
+    },
+    {
+     "x": 0,
+     "y": 50,
+     "freeSectorDeg": 360.0,
+     "lossDb": 3.5
+    }
+   ]
+  },
+  {
+   "name": "esquina",
+   "band": "5GHz",
+   "ap": [
+    -2,
+    -5
+   ],
+   "obstacles": [
+    {
+     "id": "A",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       -10
+      ]
+     ]
+    },
+    {
+     "id": "B",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       0
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 3,
+     "y": 2,
+     "straightLine": -135.029,
+     "diffraction": -72.972,
+     "diffractionAndReflection": -72.972,
+     "pathCount": 5
+    },
+    {
+     "x": 5,
+     "y": 2,
+     "straightLine": -136.249,
+     "diffraction": -78.081,
+     "diffractionAndReflection": -78.081,
+     "pathCount": 5
+    },
+    {
+     "x": 5,
+     "y": 0.5,
+     "straightLine": -135.327,
+     "diffraction": -80.23,
+     "diffractionAndReflection": -80.23,
+     "pathCount": 5
+    },
+    {
+     "x": 1,
+     "y": 3,
+     "straightLine": -45.37,
+     "diffraction": -47.422,
+     "diffractionAndReflection": -47.422,
+     "pathCount": 4
+    },
+    {
+     "x": -1,
+     "y": 3,
+     "straightLine": -44.866,
+     "diffraction": -44.866,
+     "diffractionAndReflection": -44.692,
+     "pathCount": 4
+    },
+    {
+     "x": -1,
+     "y": 1,
+     "straightLine": -42.419,
+     "diffraction": -42.419,
+     "diffractionAndReflection": -41.118,
+     "pathCount": 4
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 44.8
+    },
+    {
+     "x": 0,
+     "y": -10,
+     "freeSectorDeg": 360.0,
+     "lossDb": 44.8
+    },
+    {
+     "x": 10,
+     "y": 0,
+     "freeSectorDeg": 360.0,
+     "lossDb": 44.8
+    }
+   ]
+  },
+  {
+   "name": "recinto",
+   "band": "5GHz",
+   "ap": [
+    -3,
+    2
+   ],
+   "obstacles": [
+    {
+     "id": "K1",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       4,
+       0
+      ]
+     ]
+    },
+    {
+     "id": "K2",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       4,
+       0
+      ],
+      [
+       4,
+       4
+      ]
+     ]
+    },
+    {
+     "id": "K3",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       4,
+       4
+      ],
+      [
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "id": "K4",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       0,
+       4
+      ],
+      [
+       0,
+       0
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 7,
+     "y": 2,
+     "straightLine": -136.337,
+     "diffraction": -99.579,
+     "diffractionAndReflection": -99.579,
+     "pathCount": 5
+    },
+    {
+     "x": 7,
+     "y": 5,
+     "straightLine": -136.711,
+     "diffraction": -72.299,
+     "diffractionAndReflection": -72.299,
+     "pathCount": 3
+    },
+    {
+     "x": 2,
+     "y": 2,
+     "straightLine": -85.516,
+     "diffraction": -85.516,
+     "diffractionAndReflection": -85.313,
+     "pathCount": 2
+    },
+    {
+     "x": 5,
+     "y": 4.5,
+     "straightLine": -134.803,
+     "diffraction": -70.676,
+     "diffractionAndReflection": -70.676,
+     "pathCount": 3
+    },
+    {
+     "x": 2,
+     "y": 6,
+     "straightLine": -42.864,
+     "diffraction": -42.864,
+     "diffractionAndReflection": -42.864,
+     "pathCount": 2
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 44.8
+    },
+    {
+     "x": 4,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 44.8
+    },
+    {
+     "x": 4,
+     "y": 4,
+     "freeSectorDeg": 270.0,
+     "lossDb": 44.8
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "freeSectorDeg": 270.0,
+     "lossDb": 44.8
+    }
+   ]
+  },
+  {
+   "name": "puerta",
+   "band": "2.4GHz",
+   "ap": [
+    -3,
+    3
+   ],
+   "obstacles": [
+    {
+     "id": "D1",
+     "kind": "wall",
+     "material": "solid-brick",
+     "thicknessM": 0.15,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       -10
+      ]
+     ]
+    },
+    {
+     "id": "D2",
+     "kind": "wall",
+     "material": "solid-brick",
+     "thicknessM": 0.15,
+     "points": [
+      [
+       0,
+       0.9
+      ],
+      [
+       0,
+       10
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 3,
+     "y": -2.1,
+     "straightLine": -38.112,
+     "diffraction": -38.112,
+     "diffractionAndReflection": -38.112,
+     "pathCount": 3
+    },
+    {
+     "x": 3,
+     "y": 0.45,
+     "straightLine": -45.471,
+     "diffraction": -45.226,
+     "diffractionAndReflection": -45.226,
+     "pathCount": 4
+    },
+    {
+     "x": 3,
+     "y": 3,
+     "straightLine": -44.75,
+     "diffraction": -44.727,
+     "diffractionAndReflection": -44.727,
+     "pathCount": 4
+    },
+    {
+     "x": 1,
+     "y": 5,
+     "straightLine": -42.197,
+     "diffraction": -42.197,
+     "diffractionAndReflection": -42.197,
+     "pathCount": 4
+    },
+    {
+     "x": 0.5,
+     "y": -3,
+     "straightLine": -46.022,
+     "diffraction": -45.896,
+     "diffractionAndReflection": -45.896,
+     "pathCount": 4
+    }
+   ],
+   "frequencyMHz": 2437.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 360.0,
+     "lossDb": 9.0
+    },
+    {
+     "x": 0,
+     "y": -10,
+     "freeSectorDeg": 360.0,
+     "lossDb": 9.0
+    },
+    {
+     "x": 0,
+     "y": 0.9,
+     "freeSectorDeg": 360.0,
+     "lossDb": 9.0
+    },
+    {
+     "x": 0,
+     "y": 10,
+     "freeSectorDeg": 360.0,
+     "lossDb": 9.0
+    }
+   ]
+  },
+  {
+   "name": "columnas-en-fila",
+   "band": "5GHz",
+   "ap": [
+    -3,
+    0.15
+   ],
+   "obstacles": [
+    {
+     "id": "C0",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "medium",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0.3,
+       0
+      ],
+      [
+       0.3,
+       0.3
+      ],
+      [
+       0,
+       0.3
+      ]
+     ]
+    },
+    {
+     "id": "C1",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "medium",
+     "points": [
+      [
+       2,
+       0
+      ],
+      [
+       2.3,
+       0
+      ],
+      [
+       2.3,
+       0.3
+      ],
+      [
+       2,
+       0.3
+      ]
+     ]
+    },
+    {
+     "id": "C2",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "medium",
+     "points": [
+      [
+       4,
+       0
+      ],
+      [
+       4.3,
+       0
+      ],
+      [
+       4.3,
+       0.3
+      ],
+      [
+       4,
+       0.3
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 7,
+     "y": 0.15,
+     "straightLine": -196.137,
+     "diffraction": -75.216,
+     "diffractionAndReflection": -75.216,
+     "pathCount": 13
+    },
+    {
+     "x": 7,
+     "y": 0.6,
+     "straightLine": -96.545,
+     "diffraction": -56.374,
+     "diffractionAndReflection": -56.374,
+     "pathCount": 11
+    },
+    {
+     "x": 3,
+     "y": 0.15,
+     "straightLine": -141.9,
+     "diffraction": -67.842,
+     "diffractionAndReflection": -67.842,
+     "pathCount": 11
+    },
+    {
+     "x": 7,
+     "y": 1.5,
+     "straightLine": -46.815,
+     "diffraction": -46.798,
+     "diffractionAndReflection": -46.798,
+     "pathCount": 7
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 0,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0.3,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0.3,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 0,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 2,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 2.3,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 2.3,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 2,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 4,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 4.3,
+     "y": 0,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 4.3,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 4,
+     "y": 0.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    }
+   ]
+  },
+  {
+   "name": "reflexion-simple",
+   "band": "5GHz",
+   "ap": [
+    -2,
+    1
+   ],
+   "obstacles": [
+    {
+     "id": "W",
+     "kind": "wall",
+     "material": "concrete",
+     "thicknessM": 0.2,
+     "points": [
+      [
+       -5,
+       0
+      ],
+      [
+       5,
+       0
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 2,
+     "y": 1,
+     "straightLine": -38.778,
+     "diffraction": -38.778,
+     "diffractionAndReflection": -37.507,
+     "pathCount": 2
+    },
+    {
+     "x": 6,
+     "y": 1,
+     "straightLine": -44.798,
+     "diffraction": -44.798,
+     "diffractionAndReflection": -42.784,
+     "pathCount": 2
+    },
+    {
+     "x": 9,
+     "y": 1,
+     "straightLine": -47.564,
+     "diffraction": -47.564,
+     "diffractionAndReflection": -45.296,
+     "pathCount": 2
+    },
+    {
+     "x": 2,
+     "y": 3,
+     "straightLine": -39.747,
+     "diffraction": -39.747,
+     "diffractionAndReflection": -39.088,
+     "pathCount": 2
+    },
+    {
+     "x": -4,
+     "y": 0.5,
+     "straightLine": -33.02,
+     "diffraction": -33.02,
+     "diffractionAndReflection": -32.167,
+     "pathCount": 2
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": -5,
+     "y": 0,
+     "freeSectorDeg": 360.0,
+     "lossDb": 44.8
+    },
+    {
+     "x": 5,
+     "y": 0,
+     "freeSectorDeg": 360.0,
+     "lossDb": 44.8
+    }
+   ]
+  },
+  {
+   "name": "pasillo",
+   "band": "5GHz",
+   "ap": [
+    -8,
+    0
+   ],
+   "obstacles": [
+    {
+     "id": "A",
+     "kind": "wall",
+     "material": "solid-brick",
+     "thicknessM": 0.15,
+     "points": [
+      [
+       -10,
+       1
+      ],
+      [
+       10,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "B",
+     "kind": "wall",
+     "material": "solid-brick",
+     "thicknessM": 0.15,
+     "points": [
+      [
+       -10,
+       -1
+      ],
+      [
+       10,
+       -1
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": -4,
+     "y": 0,
+     "straightLine": -38.778,
+     "diffraction": -38.778,
+     "diffractionAndReflection": -36.735,
+     "pathCount": 3
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "straightLine": -44.798,
+     "diffraction": -44.798,
+     "diffractionAndReflection": -41.585,
+     "pathCount": 3
+    },
+    {
+     "x": 8,
+     "y": 0,
+     "straightLine": -50.819,
+     "diffraction": -50.819,
+     "diffractionAndReflection": -46.864,
+     "pathCount": 3
+    },
+    {
+     "x": 8,
+     "y": 0.6,
+     "straightLine": -50.825,
+     "diffraction": -50.825,
+     "diffractionAndReflection": -46.857,
+     "pathCount": 3
+    },
+    {
+     "x": 12,
+     "y": 0.3,
+     "straightLine": -52.758,
+     "diffraction": -52.758,
+     "diffractionAndReflection": -48.643,
+     "pathCount": 3
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": -10,
+     "y": 1,
+     "freeSectorDeg": 360.0,
+     "lossDb": 17.5
+    },
+    {
+     "x": 10,
+     "y": 1,
+     "freeSectorDeg": 360.0,
+     "lossDb": 17.5
+    },
+    {
+     "x": -10,
+     "y": -1,
+     "freeSectorDeg": 360.0,
+     "lossDb": 17.5
+    },
+    {
+     "x": 10,
+     "y": -1,
+     "freeSectorDeg": 360.0,
+     "lossDb": 17.5
+    }
+   ]
+  },
+  {
+   "name": "mixta",
+   "band": "5GHz",
+   "ap": [
+    0,
+    0
+   ],
+   "obstacles": [
+    {
+     "id": "C1",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "medium",
+     "points": [
+      [
+       2,
+       1
+      ],
+      [
+       2.3,
+       1
+      ],
+      [
+       2.3,
+       1.3
+      ],
+      [
+       2,
+       1.3
+      ]
+     ]
+    },
+    {
+     "id": "C2",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "low",
+     "points": [
+      [
+       5,
+       -1
+      ],
+      [
+       5.4,
+       -1
+      ],
+      [
+       5.4,
+       -0.6
+      ],
+      [
+       5,
+       -0.6
+      ]
+     ]
+    },
+    {
+     "id": "W1",
+     "kind": "wall",
+     "material": "solid-brick",
+     "thicknessM": 0.15,
+     "points": [
+      [
+       4,
+       2
+      ],
+      [
+       4,
+       6
+      ]
+     ]
+    },
+    {
+     "id": "W2",
+     "kind": "wall",
+     "material": "drywall",
+     "thicknessM": 0.1,
+     "points": [
+      [
+       4,
+       2
+      ],
+      [
+       8,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "W3",
+     "kind": "wall",
+     "material": "glass",
+     "thicknessM": 0.006,
+     "points": [
+      [
+       7,
+       -3
+      ],
+      [
+       7,
+       0.5
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 9,
+     "y": -2.5,
+     "straightLine": -49.644,
+     "diffraction": -49.616,
+     "diffractionAndReflection": -49.616,
+     "pathCount": 22
+    },
+    {
+     "x": 9,
+     "y": 0.5,
+     "straightLine": -49.335,
+     "diffraction": -48.873,
+     "diffractionAndReflection": -46.711,
+     "pathCount": 19
+    },
+    {
+     "x": 9,
+     "y": 1.7,
+     "straightLine": -45.974,
+     "diffraction": -45.963,
+     "diffractionAndReflection": -45.198,
+     "pathCount": 15
+    },
+    {
+     "x": 3,
+     "y": 1.2,
+     "straightLine": -36.924,
+     "diffraction": -38.264,
+     "diffractionAndReflection": -38.257,
+     "pathCount": 14
+    },
+    {
+     "x": 3,
+     "y": 2.5,
+     "straightLine": -38.569,
+     "diffraction": -38.549,
+     "diffractionAndReflection": -38.549,
+     "pathCount": 16
+    },
+    {
+     "x": 6,
+     "y": -0.9,
+     "straightLine": -89.696,
+     "diffraction": -59.586,
+     "diffractionAndReflection": -59.586,
+     "pathCount": 14
+    },
+    {
+     "x": 6,
+     "y": 1.5,
+     "straightLine": -42.563,
+     "diffraction": -42.551,
+     "diffractionAndReflection": -41.409,
+     "pathCount": 11
+    },
+    {
+     "x": 6,
+     "y": 4,
+     "straightLine": -61.397,
+     "diffraction": -66.038,
+     "diffractionAndReflection": -66.038,
+     "pathCount": 13
+    },
+    {
+     "x": 7.5,
+     "y": -1,
+     "straightLine": -95.114,
+     "diffraction": -58.408,
+     "diffractionAndReflection": -56.338,
+     "pathCount": 24
+    },
+    {
+     "x": 2.6,
+     "y": 0.2,
+     "straightLine": -35.062,
+     "diffraction": -35.062,
+     "diffractionAndReflection": -34.98,
+     "pathCount": 14
+    },
+    {
+     "x": 5.2,
+     "y": -2,
+     "straightLine": -41.656,
+     "diffraction": -41.656,
+     "diffractionAndReflection": -41.151,
+     "pathCount": 13
+    }
+   ],
+   "frequencyMHz": 5180.0,
+   "diffractingVertices": [
+    {
+     "x": 2,
+     "y": 1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 2.3,
+     "y": 1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 2.3,
+     "y": 1.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 2,
+     "y": 1.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 49.8
+    },
+    {
+     "x": 5,
+     "y": -1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 47.3
+    },
+    {
+     "x": 5.4,
+     "y": -1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 47.3
+    },
+    {
+     "x": 5.4,
+     "y": -0.6,
+     "freeSectorDeg": 270.0,
+     "lossDb": 47.3
+    },
+    {
+     "x": 5,
+     "y": -0.6,
+     "freeSectorDeg": 270.0,
+     "lossDb": 47.3
+    },
+    {
+     "x": 4,
+     "y": 2,
+     "freeSectorDeg": 270.0,
+     "lossDb": 17.5
+    },
+    {
+     "x": 4,
+     "y": 6,
+     "freeSectorDeg": 360.0,
+     "lossDb": 17.5
+    },
+    {
+     "x": 8,
+     "y": 2,
+     "freeSectorDeg": 360.0,
+     "lossDb": 10.1
+    },
+    {
+     "x": 7,
+     "y": -3,
+     "freeSectorDeg": 360.0,
+     "lossDb": 3.5
+    },
+    {
+     "x": 7,
+     "y": 0.5,
+     "freeSectorDeg": 360.0,
+     "lossDb": 3.5
+    }
+   ]
+  },
+  {
+   "name": "mixta-2g4",
+   "band": "2.4GHz",
+   "ap": [
+    0,
+    0
+   ],
+   "obstacles": [
+    {
+     "id": "C1",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "medium",
+     "points": [
+      [
+       2,
+       1
+      ],
+      [
+       2.3,
+       1
+      ],
+      [
+       2.3,
+       1.3
+      ],
+      [
+       2,
+       1.3
+      ]
+     ]
+    },
+    {
+     "id": "C2",
+     "kind": "column",
+     "material": "concrete",
+     "reinforcement": "low",
+     "points": [
+      [
+       5,
+       -1
+      ],
+      [
+       5.4,
+       -1
+      ],
+      [
+       5.4,
+       -0.6
+      ],
+      [
+       5,
+       -0.6
+      ]
+     ]
+    },
+    {
+     "id": "W1",
+     "kind": "wall",
+     "material": "solid-brick",
+     "thicknessM": 0.15,
+     "points": [
+      [
+       4,
+       2
+      ],
+      [
+       4,
+       6
+      ]
+     ]
+    },
+    {
+     "id": "W2",
+     "kind": "wall",
+     "material": "drywall",
+     "thicknessM": 0.1,
+     "points": [
+      [
+       4,
+       2
+      ],
+      [
+       8,
+       2
+      ]
+     ]
+    },
+    {
+     "id": "W3",
+     "kind": "wall",
+     "material": "glass",
+     "thicknessM": 0.006,
+     "points": [
+      [
+       7,
+       -3
+      ],
+      [
+       7,
+       0.5
+      ]
+     ]
+    }
+   ],
+   "points": [
+    {
+     "x": 9,
+     "y": -2.5,
+     "straightLine": -42.595,
+     "diffraction": -42.543,
+     "diffractionAndReflection": -42.543,
+     "pathCount": 22
+    },
+    {
+     "x": 9,
+     "y": 1.7,
+     "straightLine": -39.424,
+     "diffraction": -39.403,
+     "diffractionAndReflection": -38.688,
+     "pathCount": 15
+    },
+    {
+     "x": 3,
+     "y": 1.2,
+     "straightLine": -30.374,
+     "diffraction": -33.053,
+     "diffractionAndReflection": -33.038,
+     "pathCount": 15
+    },
+    {
+     "x": 6,
+     "y": -0.9,
+     "straightLine": -61.147,
+     "diffraction": -50.007,
+     "diffractionAndReflection": -49.931,
+     "pathCount": 14
+    },
+    {
+     "x": 6,
+     "y": 4,
+     "straightLine": -46.347,
+     "diffraction": -51.242,
+     "diffractionAndReflection": -51.242,
+     "pathCount": 13
+    },
+    {
+     "x": 7.5,
+     "y": -1,
+     "straightLine": -66.065,
+     "diffraction": -49.844,
+     "diffractionAndReflection": -48.472,
+     "pathCount": 24
+    }
+   ],
+   "frequencyMHz": 2437.0,
+   "diffractingVertices": [
+    {
+     "x": 2,
+     "y": 1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 27.8
+    },
+    {
+     "x": 2.3,
+     "y": 1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 27.8
+    },
+    {
+     "x": 2.3,
+     "y": 1.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 27.8
+    },
+    {
+     "x": 2,
+     "y": 1.3,
+     "freeSectorDeg": 270.0,
+     "lossDb": 27.8
+    },
+    {
+     "x": 5,
+     "y": -1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 25.3
+    },
+    {
+     "x": 5.4,
+     "y": -1,
+     "freeSectorDeg": 270.0,
+     "lossDb": 25.3
+    },
+    {
+     "x": 5.4,
+     "y": -0.6,
+     "freeSectorDeg": 270.0,
+     "lossDb": 25.3
+    },
+    {
+     "x": 5,
+     "y": -0.6,
+     "freeSectorDeg": 270.0,
+     "lossDb": 25.3
+    },
+    {
+     "x": 4,
+     "y": 2,
+     "freeSectorDeg": 270.0,
+     "lossDb": 9.0
+    },
+    {
+     "x": 4,
+     "y": 6,
+     "freeSectorDeg": 360.0,
+     "lossDb": 9.0
+    },
+    {
+     "x": 8,
+     "y": 2,
+     "freeSectorDeg": 360.0,
+     "lossDb": 5.4
+    },
+    {
+     "x": 7,
+     "y": -3,
+     "freeSectorDeg": 360.0,
+     "lossDb": 3.0
+    },
+    {
+     "x": 7,
+     "y": 0.5,
+     "freeSectorDeg": 360.0,
+     "lossDb": 3.0
+    }
+   ]
+  }
+ ]
+}

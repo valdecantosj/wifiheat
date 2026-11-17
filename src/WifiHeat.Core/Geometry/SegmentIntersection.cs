@@ -29,6 +29,29 @@ public static class SegmentIntersection
             || (IsZero(d4) && OnSegment(p.A, p.B, q.B));
     }
 
+    /// <summary>
+    /// Tramo del trayecto (distancias desde su inicio, en m) que toca el segmento: un punto o, si son colineales, un intervalo.
+    /// Supone que <see cref="Intersects"/> ya dio verdadero.
+    /// </summary>
+    public static (double From, double To) ContactSpan(Segment2 path, Segment2 segment)
+    {
+        Vec2 r = path.B - path.A;
+        double length = r.Length;
+        if (length <= 0) return (0, 0);
+
+        Vec2 s = segment.B - segment.A;
+        double denominator = Vec2.Cross(r, s);
+        if (Math.Abs(denominator) > 1e-12 * length * Math.Max(s.Length, 1e-12))
+        {
+            double t = Math.Clamp(Vec2.Cross(segment.A - path.A, s) / denominator, 0, 1);
+            return (t * length, t * length);
+        }
+
+        double ta = Vec2.Dot(segment.A - path.A, r) / length;
+        double tb = Vec2.Dot(segment.B - path.A, r) / length;
+        return (Math.Clamp(Math.Min(ta, tb), 0, length), Math.Clamp(Math.Max(ta, tb), 0, length));
+    }
+
     private static double Orientation(Vec2 a, Vec2 b, Vec2 c) => Vec2.Cross(b - a, c - a);
 
     private static bool IsZero(double value) => Math.Abs(value) <= Epsilon;

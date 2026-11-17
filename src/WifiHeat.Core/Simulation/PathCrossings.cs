@@ -48,8 +48,13 @@ public static class PathCrossings
     /// <summary>Suma de pérdidas con la misma regla que <see cref="Find"/>, sin armar la lista de grupos.</summary>
     public static double TotalLossDb(SimulationScene scene, Segment2 path, Band band)
     {
-        List<Contact>? contacts = Contacts(scene, path);
-        if (contacts is null) return 0;
+        return TotalLossDb(Contacts(scene, path), band);
+    }
+
+    /// <summary>Regla de uniones sobre contactos ya armados: cada grupo aporta una vez la pérdida mayor.</summary>
+    internal static double TotalLossDb(List<Contact>? contacts, Band band)
+    {
+        if (contacts is null || contacts.Count == 0) return 0;
         if (contacts.Count == 1) return contacts[0].LossDb(band);
 
         int[] group = Group(contacts);
@@ -75,7 +80,7 @@ public static class PathCrossings
             foreach (Segment2 segment in rw.Wall.Segments)
             {
                 if (!SegmentIntersection.Intersects(path, segment)) continue;
-                (spans ??= []).Add(Span(path, segment));
+                (spans ??= []).Add(SegmentIntersection.ContactSpan(path, segment));
             }
 
             if (spans is not null) (contacts ??= []).Add(new Contact(rw, spans));
@@ -108,29 +113,7 @@ public static class PathCrossings
         }
     }
 
-    /// <summary>Tramo del trayecto (distancias desde el AP, en m) que toca el segmento: un punto o, si son colineales, un intervalo.</summary>
-    private static (double From, double To) Span(Segment2 path, Segment2 segment)
-    {
-        Vec2 r = path.B - path.A;
-        double length = r.Length;
-        if (length <= 0) return (0, 0);
-
-        Vec2 s = segment.B - segment.A;
-        double denominator = Vec2.Cross(r, s);
-        if (Math.Abs(denominator) > 1e-12 * length * Math.Max(s.Length, 1e-12))
-        {
-            double t = Math.Clamp(Vec2.Cross(segment.A - path.A, s) / denominator, 0, 1);
-            return (t * length, t * length);
-        }
-
-        double ta = Dot(segment.A - path.A, r) / length;
-        double tb = Dot(segment.B - path.A, r) / length;
-        return (Math.Clamp(Math.Min(ta, tb), 0, length), Math.Clamp(Math.Max(ta, tb), 0, length));
-    }
-
-    private static double Dot(Vec2 a, Vec2 b) => a.X * b.X + a.Y * b.Y;
-
-    private sealed record Contact(ResolvedWall Wall, List<(double From, double To)> Spans)
+    internal sealed record Contact(ResolvedWall Wall, List<(double From, double To)> Spans)
     {
         public double LossDb(Band band) => Wall.LossDb(band);
 

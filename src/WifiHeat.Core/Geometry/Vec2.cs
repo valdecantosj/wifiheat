@@ -14,5 +14,8 @@ public readonly record struct Vec2(double X, double Y)
     /// <summary>Producto vectorial 2D (componente z).</summary>
     public static double Cross(Vec2 a, Vec2 b) => a.X * b.Y - a.Y * b.X;
 
+    /// <summary>Producto escalar.</summary>
+    public static double Dot(Vec2 a, Vec2 b) => a.X * b.X + a.Y * b.Y;
+
     public override string ToString() => FormattableString.Invariant($"({X:0.###}; {Y:0.###})");
 }

@@ -6,6 +6,9 @@ public sealed class Polygon2
     private const double Tolerance = 1e-9;
     private const double ShrinkM = 1e-6;
 
+    /// <summary>Distancia al borde por debajo de la cual un punto no se considera interior estricto.</summary>
+    public const double StrictToleranceM = 1e-6;
+
     public Polygon2(IEnumerable<Vec2> vertices)
     {
         var list = new List<Vec2>();
@@ -56,6 +59,54 @@ public sealed class Polygon2
         }
 
         return inside;
+    }
+
+    /// <summary>Punto dentro del polígono y a más de <see cref="StrictToleranceM"/> de su borde.</summary>
+    public bool ContainsStrictly(Vec2 p)
+    {
+        bool inside = false;
+        for (int i = 0, j = Vertices.Count - 1; i < Vertices.Count; j = i++)
+        {
+            Vec2 a = Vertices[i], b = Vertices[j];
+            Vec2 ab = b - a;
+            double t = Math.Max(0.0, Math.Min(1.0, Vec2.Dot(p - a, ab) / Vec2.Dot(ab, ab)));
+            if (Vec2.Distance(p, a + ab * t) <= StrictToleranceM) return false;
+            if ((a.Y > p.Y) != (b.Y > p.Y) && p.X < (b.X - a.X) * (p.Y - a.Y) / (b.Y - a.Y) + a.X) inside = !inside;
+        }
+
+        return inside;
+    }
+
+    /// <summary>
+    /// Tramos del segmento que pasan por el interior estricto del polígono, como fracciones (0 a 1) de su longitud.
+    /// Correr a lo largo de un lado o tocar un vértice no es pasar por el interior.
+    /// </summary>
+    public IReadOnlyList<(double From, double To)> InteriorIntervals(Segment2 segment)
+    {
+        Vec2 r = segment.B - segment.A;
+        double length = r.Length;
+        if (length <= 0) return [];
+
+        var cuts = new List<double> { 0.0, 1.0 };
+        foreach (Segment2 edge in Edges())
+        {
+            if (!SegmentIntersection.Intersects(segment, edge)) continue;
+            (double from, double to) = SegmentIntersection.ContactSpan(segment, edge);
+            cuts.Add(from / length);
+            cuts.Add(to / length);
+        }
+
+        cuts.Sort();
+
+        List<(double From, double To)>? result = null;
+        for (int i = 0; i + 1 < cuts.Count; i++)
+        {
+            double t0 = cuts[i], t1 = cuts[i + 1];
+            if (t1 - t0 <= 1e-9) continue;
+            if (ContainsStrictly(segment.A + r * ((t0 + t1) / 2))) (result ??= []).Add((t0, t1));
+        }
+
+        return result ?? (IReadOnlyList<(double From, double To)>)[];
     }
 
     /// <summary>¿El rectángulo y el polígono comparten superficie? Tocarse solo en un borde no cuenta.</summary>

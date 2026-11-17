@@ -82,3 +82,79 @@ public class PolygonTests
         Assert.False(tiny.Overlaps(new BoundingBox(new Vec2(1.5, 1), new Vec2(2, 1.5))));
     }
 }
+
+public class PolygonInteriorTests
+{
+    private static readonly Polygon2 Square = new([new Vec2(0, 0), new Vec2(1, 0), new Vec2(1, 1), new Vec2(0, 1)]);
+
+    private static readonly Polygon2 LShape = new(
+        [new Vec2(0, 0), new Vec2(10, 0), new Vec2(10, 4), new Vec2(4, 4), new Vec2(4, 8), new Vec2(0, 8)]);
+
+    private static Segment2 S(double ax, double ay, double bx, double by) => new(new Vec2(ax, ay), new Vec2(bx, by));
+
+    [Theory]
+    [InlineData(0.5, 0.5, true)]
+    [InlineData(0.00001, 0.5, true)]
+    [InlineData(0, 0.5, false)]
+    [InlineData(0.0000005, 0.5, false)]
+    [InlineData(1, 1, false)]
+    [InlineData(-0.5, 0.5, false)]
+    [InlineData(1.5, 0.5, false)]
+    public void ContainsStrictly_leaves_out_the_boundary(double x, double y, bool expected)
+    {
+        Assert.Equal(expected, Square.ContainsStrictly(new Vec2(x, y)));
+    }
+
+    [Fact]
+    public void A_segment_across_the_square_has_one_interior_stretch()
+    {
+        (double from, double to) = Assert.Single(Square.InteriorIntervals(S(-1, 0.5, 3, 0.5)));
+
+        Assert.Equal(0.25, from, 12);
+        Assert.Equal(0.5, to, 12);
+    }
+
+    [Theory]
+    [InlineData(-1, 0, 2, 0)]
+    [InlineData(0.2, 1, 0.8, 1)]
+    [InlineData(-1, 1, 1, -1)]
+    [InlineData(-1, 2, 3, 2)]
+    [InlineData(1, 0.5, 2, 0.5)]
+    public void Sides_corners_and_misses_are_not_interior(double ax, double ay, double bx, double by)
+    {
+        Assert.Empty(Square.InteriorIntervals(S(ax, ay, bx, by)));
+    }
+
+    [Fact]
+    public void A_corner_to_corner_diagonal_is_interior()
+    {
+        (double from, double to) = Assert.Single(Square.InteriorIntervals(S(0, 0, 1, 1)));
+
+        Assert.Equal(0, from, 12);
+        Assert.Equal(1, to, 12);
+    }
+
+    [Fact]
+    public void A_segment_fully_inside_is_one_whole_stretch()
+    {
+        Assert.Equal((0.0, 1.0), Assert.Single(Square.InteriorIntervals(S(0.2, 0.2, 0.8, 0.7))));
+    }
+
+    [Fact]
+    public void A_concave_outline_can_give_two_stretches()
+    {
+        IReadOnlyList<(double From, double To)> intervals = LShape.InteriorIntervals(S(2, 9, 11, 0));
+
+        Assert.Equal(2, intervals.Count);
+        Assert.Equal(1.0 / 9, intervals[0].From, 9);
+        Assert.Equal(2.0 / 9, intervals[0].To, 9);
+        Assert.Equal(5.0 / 9, intervals[1].From, 9);
+        Assert.Equal(8.0 / 9, intervals[1].To, 9);
+    }
+
+    [Fact]
+    public void A_point_segment_has_no_interior()
+    {
+        Assert.Empty(Square.InteriorIntervals(S(0.5, 0.5, 0.5, 0.5)));
+    }
+}
