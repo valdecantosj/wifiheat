@@ -34,6 +34,37 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         return OperationResult<int>.Ok(percent);
     }
 
+    /// <summary>Modelo de propagación. Por defecto, línea recta.</summary>
+    public PropagationModel Model { get; private set; } = PropagationModel.StraightLine;
+
+    /// <summary>Difracciones máximas por trayecto en los modelos con difracción (1 a 4).</summary>
+    public int MaxDiffractions { get; private set; } = PropagationOptions.DefaultMaxDiffractions;
+
+    public PropagationOptions PropagationOptions => new(MaxDiffractions: MaxDiffractions);
+
+    /// <summary>Cambia el modelo y, si se indica, el tope de difracciones. Un cambio invalida el último cálculo.</summary>
+    public OperationResult<PropagationModel> SetModel(PropagationModel model, int? maxDiffractions = null)
+    {
+        if (!Enum.IsDefined(model)) return OperationResult<PropagationModel>.Fail("Modelo de propagación desconocido.");
+        if (!PropagationModelInfo.IsAvailable(model))
+        {
+            return OperationResult<PropagationModel>.Fail($"El modelo «{PropagationModelInfo.Label(model)}» todavía no está disponible.");
+        }
+
+        int diffractions = maxDiffractions ?? MaxDiffractions;
+        if (!PropagationOptions.IsValidMaxDiffractions(diffractions))
+        {
+            return OperationResult<PropagationModel>.Fail(
+                $"Las difracciones máximas por trayecto van de {PropagationOptions.MinDiffractions} a {PropagationOptions.MaxDiffractionsLimit}.");
+        }
+
+        bool changed = model != Model || (diffractions != MaxDiffractions && model != PropagationModel.StraightLine);
+        Model = model;
+        MaxDiffractions = diffractions;
+        if (changed) LastGrid = null;
+        return OperationResult<PropagationModel>.Ok(model);
+    }
+
     public IReadOnlyList<Wall> Walls { get; private set; } = [];
 
     public ValidationReport? Validation { get; private set; }
@@ -59,6 +90,7 @@ public sealed class SimulationSession(MaterialCatalog catalog)
     private SimulationScene? _scene;
     private RssiGrid? _lastGrid;
     private HeatmapImage? _heatmap;
+    private PathEngine? _engine;
 
     /// <summary>Carga los muros leídos del plano y los valida. Invalida el último cálculo.</summary>
     public ValidationReport LoadWalls(IReadOnlyList<Wall> walls, IEnumerable<ValidationIssue>? hostIssues = null)
@@ -119,7 +151,9 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         (GridPlan? plan, string? error) = PlanGrid(CoverageArea, CellSizeM);
         if (plan is null) return OperationResult<RssiGrid>.Fail(error!);
 
-        LastGrid = GridCalculator.Calculate(_scene, AccessPoint, Settings, plan.Spec, plan.Area);
+        LastGrid = Model == PropagationModel.StraightLine
+            ? GridCalculator.Calculate(_scene, AccessPoint, Settings, plan.Spec, plan.Area)
+            : GridCalculator.Calculate(Engine(_scene, AccessPoint), plan.Spec, plan.Area);
         return OperationResult<RssiGrid>.Ok(LastGrid, plan.Warnings);
     }
 
@@ -142,7 +176,7 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         (GridPlan? plan, string? error) = PlanGrid(area, cellSize);
         if (plan is null) return OperationResult<ReinforcementEffectResult>.Fail(error!);
 
-        ReinforcementEffectMap? map = ReinforcementEffect.Calculate(_scene, AccessPoint, Settings, plan.Spec, plan.Area);
+        ReinforcementEffectMap? map = ReinforcementEffect.Calculate(_scene, AccessPoint, Settings, plan.Spec, plan.Area, Model, PropagationOptions);
         return OperationResult<ReinforcementEffectResult>.Ok(new ReinforcementEffectResult(map, cellSize, lowered, _scene.ReinforcedColumnCount), plan.Warnings);
     }
 
@@ -198,7 +232,21 @@ public sealed class SimulationSession(MaterialCatalog catalog)
                 $"El punto consultado está dentro de la columna {column.Wall.Id}: ahí no hay señal que estimar. Elegir un punto fuera de la columna.");
         }
 
-        return OperationResult<PointCalculation>.Ok(PointCalculator.Calculate(_scene, AccessPoint, Settings, point));
+        return OperationResult<PointCalculation>.Ok(Model == PropagationModel.StraightLine
+            ? PointCalculator.Calculate(_scene, AccessPoint, Settings, point)
+            : PointCalculator.Calculate(Engine(_scene, AccessPoint), point));
+    }
+
+    /// <summary>Motor de trayectos de la escena, el AP y los parámetros vigentes; se rehace cuando alguno cambia.</summary>
+    private PathEngine Engine(SimulationScene scene, AccessPoint accessPoint)
+    {
+        if (_engine is null || !ReferenceEquals(_engine.Scene, scene) || _engine.AccessPoint != accessPoint || _engine.Settings != Settings
+            || _engine.Model != Model || _engine.Options.MaxDiffractions != MaxDiffractions)
+        {
+            _engine = PathEngine.For(scene, accessPoint, Settings, Model, PropagationOptions);
+        }
+
+        return _engine;
     }
 
     /// <summary>Mensaje si el AP está dentro de una columna (o sobre su borde); null si no.</summary>

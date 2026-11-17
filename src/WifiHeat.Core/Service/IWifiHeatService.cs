@@ -17,6 +17,9 @@ public interface IWifiHeatService
 
     IReadOnlyList<Material> Materials { get; }
 
+    /// <summary>Modelos de propagación que se pueden elegir. El vigente está en <see cref="Settings"/>.</summary>
+    IReadOnlyList<PropagationModel> PropagationModels { get; }
+
     /// <summary>True si el último cálculo sigue vigente (no cambiaron muros, AP, área ni parámetros).</summary>
     bool HasResult { get; }
 

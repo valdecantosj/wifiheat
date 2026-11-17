@@ -52,6 +52,7 @@ public sealed class PathEngine
         _scene = scene;
         _settings = settings;
         _band = settings.Band;
+        AccessPoint = accessPoint;
         _ap = accessPoint.Position;
         _frequencyMHz = settings.FrequencyMHz;
         _lambda = KnifeEdge.WavelengthM(_frequencyMHz);
@@ -59,6 +60,25 @@ public sealed class PathEngine
         _positions = [.. _vertices.Select(v => v.Position)];
         _arrivals = BuildArrivals();
     }
+
+    /// <summary>Motor para un modelo distinto de línea recta. El modelo con reflexiones todavía no está disponible.</summary>
+    public static PathEngine For(SimulationScene scene, AccessPoint accessPoint, RadioSettings settings, PropagationModel model, PropagationOptions? options = null)
+    {
+        if (model != PropagationModel.Diffraction)
+        {
+            throw new ArgumentOutOfRangeException(nameof(model), $"El modelo «{PropagationModelInfo.Label(model)}» no usa este motor.");
+        }
+
+        return new PathEngine(scene, accessPoint, settings, options);
+    }
+
+    public SimulationScene Scene => _scene;
+
+    public AccessPoint AccessPoint { get; }
+
+    public RadioSettings Settings => _settings;
+
+    public PropagationModel Model => PropagationModel.Diffraction;
 
     public IReadOnlyList<DiffractingVertex> Vertices => _vertices;
 

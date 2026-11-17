@@ -27,6 +27,22 @@ public static class PointCalculator
         return new PointCalculation(point, ap, settings, distance, effective, pathLoss, crossings, wallLoss, rx);
     }
 
+    /// <summary>Con un modelo distinto de línea recta arma un <see cref="PathEngine"/> para esta consulta.</summary>
+    public static PointCalculation Calculate(SimulationScene scene, AccessPoint ap, RadioSettings settings, Vec2 point,
+        PropagationModel model, PropagationOptions? options = null) =>
+        model == PropagationModel.StraightLine
+            ? Calculate(scene, ap, settings, point)
+            : Calculate(PathEngine.For(scene, ap, settings, model, options), point);
+
+    /// <summary>Consulta con difracción: los datos de la recta AP–punto más los trayectos sumados y su total.</summary>
+    public static PointCalculation Calculate(PathEngine engine, Vec2 point) =>
+        Calculate(engine.Scene, engine.AccessPoint, engine.Settings, point) with
+        {
+            Model = engine.Model,
+            Paths = engine.Paths(point),
+            ReceivedPowerDbm = engine.ReceivedPowerDbm(point),
+        };
+
     /// <summary>Versión rápida para la grilla: solo el valor en dBm.</summary>
     public static double ReceivedPowerDbm(SimulationScene scene, AccessPoint ap, RadioSettings settings, Vec2 point)
     {

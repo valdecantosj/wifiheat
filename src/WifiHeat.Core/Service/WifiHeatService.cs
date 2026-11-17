@@ -33,9 +33,11 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         {
             RadioSettings r = Session.Settings;
             return new SimulationSettings(r.Band, r.TxPowerDbm, r.TxAntennaGainDbi, r.RxAntennaGainDbi, r.TxCableLossDb, r.RxCableLossDb,
-                Session.CellSizeM, Session.OverlayFadePercent);
+                Session.CellSizeM, Session.OverlayFadePercent, Session.Model, Session.MaxDiffractions);
         }
     }
+
+    public IReadOnlyList<PropagationModel> PropagationModels => PropagationModelInfo.Available;
 
     public AccessPointInfo? AccessPoint => Session.AccessPoint is { } ap
         ? new AccessPointInfo(ap.Name, ap.Position, Session.Settings.Band, Session.Settings.FrequencyMHz, Session.Settings.TxPowerDbm)
@@ -446,10 +448,25 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         errors.AddRange(radio.Validate());
         if (SimulationSession.ResolutionError(settings.CellSizeM) is { } resolution) errors.Add(resolution);
         if (OverlayFade.Error(settings.OverlayFadePercent) is { } fade) errors.Add(fade);
+        if (!Enum.IsDefined(settings.Model))
+        {
+            errors.Add("Modelo de propagación desconocido.");
+        }
+        else if (!PropagationModelInfo.IsAvailable(settings.Model))
+        {
+            errors.Add($"El modelo «{PropagationModelInfo.Label(settings.Model)}» todavía no está disponible.");
+        }
+
+        if (!PropagationOptions.IsValidMaxDiffractions(settings.MaxDiffractions))
+        {
+            errors.Add($"Las difracciones máximas por trayecto van de {PropagationOptions.MinDiffractions} a {PropagationOptions.MaxDiffractionsLimit}.");
+        }
+
         if (errors.Count > 0) return new OperationResult<SimulationSettings>(null, errors, []);
 
         bool radioChanged = radio != Session.Settings;
         Session.Configure(radio, settings.CellSizeM);
+        Session.SetModel(settings.Model, settings.MaxDiffractions);
         Session.SetOverlayFade(settings.OverlayFadePercent);
 
         var warnings = new List<string>();
@@ -474,7 +491,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
         string? warning = _effectShown is { } effect
             ? ApplyOverlayFade(percent, effect.Grid, effect.Legend)
-            : ApplyOverlayFade(percent, Session.LastGrid, Legend.For(Session.Settings));
+            : ApplyOverlayFade(percent, Session.LastGrid, Legend.For(Session.Settings, Session.Model));
         return OperationResult<int>.Ok(percent, warning is null ? [] : [warning]);
     }
 
@@ -503,7 +520,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         var imageWatch = Stopwatch.StartNew();
         HeatmapImage image = Session.Heatmap()!;
         _effectShown = null;
-        OverlayOutcome overlay = DrawResult(grid, image, Legend.For(Session.Settings), Session.OverlayFadePercent, OverlayImageKind.Coverage);
+        OverlayOutcome overlay = DrawResult(grid, image, Legend.For(Session.Settings, Session.Model), Session.OverlayFadePercent, OverlayImageKind.Coverage);
         imageWatch.Stop();
         warnings.AddRange(overlay.Warnings);
 
@@ -511,7 +528,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         LastCalculation = new CalculationSummary(
             spec.CellCount, spec.Columns, spec.Rows, spec.CellSizeM, grid.ValueCount, grid.Min, grid.Max,
             watch.Elapsed.TotalMilliseconds, imageWatch.Elapsed.TotalMilliseconds,
-            image.Width, image.Height, image.PixelSizeM, Session.OverlayFadePercent, overlay.ImagePath, area.Description, warnings);
+            image.Width, image.Height, image.PixelSizeM, Session.OverlayFadePercent, overlay.ImagePath, area.Description, warnings, Session.Model);
         return OperationResult<CalculationSummary>.Ok(LastCalculation, warnings);
     }
 
@@ -538,19 +555,19 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
         if (map is null || !map.HasEffect)
         {
             return OperationResult<ReinforcementEffectSummary>.Ok(new ReinforcementEffectSummary(
-                r.ReinforcedColumns, 0, 0, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, null, warnings), warnings);
+                r.ReinforcedColumns, 0, 0, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, null, warnings, Session.Model), warnings);
         }
 
         if (r.ResolutionLowered) warnings.Add(LoweredResolutionWarning(Session.CellSizeM, r.CellSizeM));
         var scale = new EffectScale(map.MaxDb);
-        Legend legend = Legend.ForReinforcementEffect(Session.Settings, scale);
+        Legend legend = Legend.ForReinforcementEffect(Session.Settings, scale, Session.Model);
         HeatmapImage image = HeatmapRasterizer.RenderEffect(map.Grid, scale);
         OverlayOutcome overlay = DrawResult(map.Grid, image, legend, Session.OverlayFadePercent, OverlayImageKind.ReinforcementEffect);
         warnings.AddRange(overlay.Warnings);
         if (overlay.ImagePath is not null) _effectShown = new EffectDisplay(map.Grid, legend);
 
         return OperationResult<ReinforcementEffectSummary>.Ok(new ReinforcementEffectSummary(
-            r.ReinforcedColumns, map.AffectedCells, map.MaxDb, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, overlay.ImagePath, warnings), warnings);
+            r.ReinforcedColumns, map.AffectedCells, map.MaxDb, r.CellSizeM, Session.CellSizeM, r.ResolutionLowered, overlay.ImagePath, warnings, Session.Model), warnings);
     }
 
     private static string LoweredResolutionWarning(double sessionM, double usedM) => string.Create(Es,
@@ -592,7 +609,7 @@ public abstract class WifiHeatService(SimulationSession session) : IWifiHeatServ
 
         try
         {
-            WritePng(full, Session.Walls, Session.Heatmap()!, Session.AccessPoint, Legend.For(Session.Settings), Session.OverlayFadePercent);
+            WritePng(full, Session.Walls, Session.Heatmap()!, Session.AccessPoint, Legend.For(Session.Settings, Session.Model), Session.OverlayFadePercent);
             return OperationResult<string>.Ok(full);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.ExternalException)

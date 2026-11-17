@@ -19,7 +19,11 @@ public sealed record WallCrossing(
     public bool IsColumn => Reinforcement is not null;
 }
 
-/// <summary>Resultado explicable del cálculo en un punto.</summary>
+/// <summary>
+/// Resultado explicable del cálculo en un punto.
+/// DistanceM, PathLossDb, Walls y WallLossDb describen la recta AP–punto. ReceivedPowerDbm es el total del modelo:
+/// con difracción, la suma en potencia de Paths (null en el modelo de línea recta).
+/// </summary>
 public sealed record PointCalculation(
     Vec2 Point,
     AccessPoint AccessPoint,
@@ -29,4 +33,6 @@ public sealed record PointCalculation(
     double PathLossDb,
     IReadOnlyList<WallCrossing> Walls,
     double WallLossDb,
-    double ReceivedPowerDbm);
+    double ReceivedPowerDbm,
+    PropagationModel Model = PropagationModel.StraightLine,
+    IReadOnlyList<PathContribution>? Paths = null);

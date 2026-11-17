@@ -32,6 +32,39 @@ public static class ReinforcementEffect
     public static double AddedLossDb(SimulationScene scene, SimulationScene withoutReinforcement, Segment2 path, Band band) =>
         PathCrossings.TotalLossDb(scene, path, band) - PathCrossings.TotalLossDb(withoutReinforcement, path, band);
 
+    /// <summary>
+    /// Con un modelo distinto de línea recta, la diferencia sale de dos motores: la escena normal y la misma sin armadura.
+    /// Como se suman varios trayectos, la diferencia es continua; las celdas por debajo de
+    /// <see cref="EffectScale.VisibleThresholdDb"/> quedan sin valor.
+    /// </summary>
+    public static ReinforcementEffectMap? Calculate(SimulationScene scene, AccessPoint ap, RadioSettings settings, GridSpec spec, Polygon2 area,
+        PropagationModel model, PropagationOptions? options = null)
+    {
+        if (model == PropagationModel.StraightLine) return Calculate(scene, ap, settings, spec, area);
+        if (!scene.HasReinforcement) return null;
+
+        PathEngine normal = PathEngine.For(scene, ap, settings, model, options);
+        PathEngine plain = PathEngine.For(scene.WithoutReinforcement(), ap, settings, model, options);
+        var values = new double[spec.Columns, spec.Rows];
+        Parallel.For(0, spec.Columns, column =>
+        {
+            for (int row = 0; row < spec.Rows; row++)
+            {
+                Vec2 min = spec.CellMin(column, row);
+                var cell = new BoundingBox(min, new Vec2(min.X + spec.CellSizeM, min.Y + spec.CellSizeM));
+                values[column, row] = double.NaN;
+                if (!area.Overlaps(cell)) continue;
+
+                Vec2 center = spec.CellCenter(column, row);
+                double added = normal.CombinedLossDb(center) - plain.CombinedLossDb(center);
+                if (added >= EffectScale.VisibleThresholdDb) values[column, row] = added;
+            }
+        });
+
+        var grid = new RssiGrid(spec, values, area);
+        return new ReinforcementEffectMap(grid, grid.ValueCount, grid.ValueCount > 0 ? grid.Max : 0);
+    }
+
     /// <summary>Null si ninguna columna tiene adicional de armadura: no hay nada que mostrar.</summary>
     public static ReinforcementEffectMap? Calculate(SimulationScene scene, AccessPoint ap, RadioSettings settings, GridSpec spec, Polygon2 area)
     {

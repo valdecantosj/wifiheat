@@ -17,6 +17,13 @@ public static class Explanation
         sb.AppendLine(F($"Consulta en {c.Point} (punto exacto)"));
         sb.AppendLine(F($"{c.AccessPoint.Name} en {c.AccessPoint.Position} · Banda {BandInfo.Label(s.Band)} ({s.FrequencyMHz:0} MHz)"));
         sb.AppendLine(F($"P_TX = {s.TxPowerDbm:0.#} dBm · L_cable,TX = {s.TxCableLossDb:0.#} dB · G_antena,TX = {s.TxAntennaGainDbi:0.#} dBi · G_antena,RX = {s.RxAntennaGainDbi:0.#} dBi · L_cable,RX = {s.RxCableLossDb:0.#} dB"));
+        bool withPaths = c.Model != PropagationModel.StraightLine && c.Paths is not null;
+        if (withPaths)
+        {
+            sb.AppendLine($"Modelo: {PropagationModelInfo.Label(c.Model)}");
+            sb.AppendLine("Recta AP–punto:");
+        }
+
         sb.AppendLine(F($"d = {c.DistanceM:0.00} m{(c.EffectiveDistanceM > c.DistanceM ? F($" (se usa el mínimo de {c.EffectiveDistanceM:0.##} m)") : "")}"));
         sb.AppendLine(F($"L_0 = {c.PathLossDb:0.00} dB"));
         sb.AppendLine(F($"{(c.Walls.Any(w => w.IsColumn) ? "Muros y columnas cruzados" : "Muros cruzados")}: {c.Walls.Count}"));
@@ -31,10 +38,39 @@ public static class Explanation
         }
 
         sb.AppendLine(F($"L_materiales = {c.WallLossDb:0.00} dB"));
+        if (withPaths) AppendPaths(sb, c.Paths!);
         SignalLevel level = SignalScale.Classify(c.ReceivedPowerDbm);
         sb.AppendLine(F($"P_RX = RSSI estimado = {c.ReceivedPowerDbm:0.00} dBm → {level.ColorName} ({level.Label})"));
         sb.Append("Estimación del modelo; no es una medición.");
         return sb.ToString();
+    }
+
+    /// <summary>Cantidad de trayectos que se listan; el resto se resume en una línea.</summary>
+    public const int MaxListedPaths = 5;
+
+    private static void AppendPaths(StringBuilder sb, IReadOnlyList<PathContribution> paths)
+    {
+        sb.AppendLine(F($"Trayectos sumados: {paths.Count} (suma de potencias, sin fases)"));
+        for (int i = 0; i < Math.Min(paths.Count, MaxListedPaths); i++)
+        {
+            PathContribution p = paths[i];
+            sb.AppendLine(F($"  {i + 1}. {DescribePath(p)} · {p.LengthM:0.00} m · pérdida {p.LossDb:0.0} dB · {p.PowerShare * 100:0.0} % de la potencia"));
+        }
+
+        if (paths.Count > MaxListedPaths)
+        {
+            double rest = paths.Skip(MaxListedPaths).Sum(p => p.PowerShare);
+            sb.AppendLine(F($"  Los otros {paths.Count - MaxListedPaths} aportan el {rest * 100:0.0} %."));
+        }
+    }
+
+    /// <summary>«Directo» o «Difractado ×2 en (0; 0) y (0,3; 0)».</summary>
+    public static string DescribePath(PathContribution path)
+    {
+        if (path.Kind == PathKind.Direct) return "Directo";
+
+        string vertices = string.Join(" y ", path.Vertices.Select(v => F($"({v.X:0.##}; {v.Y:0.##})")));
+        return F($"Difractado ×{path.Diffractions} en {vertices}");
     }
 
     public static string ReinforcementName(Reinforcement level) =>

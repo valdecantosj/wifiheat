@@ -23,7 +23,10 @@ public sealed record ValidationSummary(int WallCount, int ErrorCount, int Warnin
     public bool IsValid => ErrorCount == 0;
 }
 
-/// <summary>Parámetros que el usuario puede cambiar: enlace, resolución de la grilla y atenuación del mapa.</summary>
+/// <summary>
+/// Parámetros que el usuario puede cambiar: enlace, resolución de la grilla, atenuación del mapa y modelo de propagación.
+/// MaxDiffractions solo interviene en los modelos con difracción.
+/// </summary>
 public sealed record SimulationSettings(
     Band Band,
     double TxPowerDbm,
@@ -32,7 +35,9 @@ public sealed record SimulationSettings(
     double TxCableLossDb,
     double RxCableLossDb,
     double CellSizeM,
-    int OverlayFadePercent);
+    int OverlayFadePercent,
+    PropagationModel Model = PropagationModel.StraightLine,
+    int MaxDiffractions = PropagationOptions.DefaultMaxDiffractions);
 
 public sealed record CalculationSummary(
     int Cells,
@@ -50,7 +55,8 @@ public sealed record CalculationSummary(
     int OverlayFadePercent,
     string? ImagePath,
     string AreaDescription,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    PropagationModel Model = PropagationModel.StraightLine);
 
 public sealed record QueryResult(Vec2 PointM, double ReceivedPowerDbm, SignalLevel Level, PointCalculation Calculation, string Explanation);
 
@@ -189,7 +195,8 @@ public sealed record ReinforcementEffectSummary(
     double SessionCellSizeM,
     bool ResolutionLowered,
     string? ImagePath,
-    IReadOnlyList<string> Warnings)
+    IReadOnlyList<string> Warnings,
+    PropagationModel Model = PropagationModel.StraightLine)
 {
     private static readonly System.Globalization.CultureInfo Es = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
 
@@ -200,7 +207,11 @@ public sealed record ReinforcementEffectSummary(
         ? "No hay columnas con armadura: no hay nada que mostrar"
         : NothingToShow
             ? "La armadura no agrega pérdida en el área de cobertura"
-            : string.Create(Es, $"Efecto máximo de la armadura: {MaxDb:0.##} dB");
+            : Model == PropagationModel.StraightLine
+                ? string.Create(Es, $"Efecto máximo de la armadura: {MaxDb:0.##} dB")
+                : string.Create(Es, $"Efecto máximo de la armadura: {MaxDb:0.##} dB (modelo {ModelName})");
+
+    private string ModelName => PropagationModelInfo.Label(Model).ToLower(Es);
 
     /// <summary>Detalle del resultado: celdas afectadas y resolución usada.</summary>
     public IReadOnlyList<string> Details
@@ -214,11 +225,18 @@ public sealed record ReinforcementEffectSummary(
             }
             else if (NothingToShow)
             {
-                lines.Add(string.Create(Es, $"Hay {ReinforcedColumns} columna(s) con armadura, pero ningún trayecto desde el AP las cruza dentro del área."));
+                lines.Add(Model == PropagationModel.StraightLine
+                    ? string.Create(Es, $"Hay {ReinforcedColumns} columna(s) con armadura, pero ningún trayecto desde el AP las cruza dentro del área.")
+                    : string.Create(Es, $"Hay {ReinforcedColumns} columna(s) con armadura, pero con el modelo {ModelName} la diferencia no llega a {EffectScale.VisibleThresholdDb:0.00} dB en ninguna celda: detrás de una columna domina la señal que la rodea."));
             }
             else
             {
                 lines.Add(string.Create(Es, $"{AffectedCells} celda(s) afectada(s) · resolución {CellSizeM:0.##} m."));
+                if (Model != PropagationModel.StraightLine)
+                {
+                    lines.Add("Con este modelo la señal también rodea la columna, así que la armadura cambia menos el resultado que con línea recta.");
+                }
+
                 lines.Add("Es una diferencia en dB, no un nivel de señal. Para volver al mapa de cobertura: WIFICALCULATE.");
             }
 

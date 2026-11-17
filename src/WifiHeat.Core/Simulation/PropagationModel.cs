@@ -31,6 +31,20 @@ public sealed record PropagationOptions(int MaxDiffractions = 3, double PruneDb 
 
 public static class PropagationModelInfo
 {
+    /// <summary>Modelos que se pueden elegir.</summary>
+    public static IReadOnlyList<PropagationModel> Available { get; } = [PropagationModel.StraightLine, PropagationModel.Diffraction];
+
+    public static bool IsAvailable(PropagationModel model) => Available.Contains(model);
+
+    /// <summary>Descripción de una línea, para la ayuda del selector.</summary>
+    public static string Description(PropagationModel model) => model switch
+    {
+        PropagationModel.StraightLine => "Recta del AP a cada punto: espacio libre más los muros y columnas que cruza.",
+        PropagationModel.Diffraction => "Suma la señal que rodea extremos de muro, esquinas y columnas. Tarda más en calcular.",
+        PropagationModel.DiffractionAndReflection => "Además suma un rebote en cada muro.",
+        _ => throw new ArgumentOutOfRangeException(nameof(model)),
+    };
+
     public static string Label(PropagationModel model) => model switch
     {
         PropagationModel.StraightLine => "Línea recta",
