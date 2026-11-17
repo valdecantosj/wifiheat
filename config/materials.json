@@ -33,5 +33,18 @@
       "lossDb": { "2.4GHz": 3.0, "5GHz": 3.5 },
       "sources": ["Interline: 'Clear glass window' 2–4 / 0–7 dB (punto medio)."]
     }
-  ]
+  ],
+  "columnReinforcement": {
+    "note": "Columnas de hormigón armado: a la pérdida del material se le suma un adicional por nivel de armadura, igual en las dos bandas. Los adicionales son una convención del proyecto, no datos publicados: no hay una tabla que relacione la cuantía de acero con decibeles. Las cuantías de los ejemplos son un cálculo geométrico (área de las barras sobre el área de la columna).",
+    "material": "concrete",
+    "levels": [
+      { "id": "low", "name": "Baja", "example": "4 barras Ø20 en una columna de 30 × 30 cm (cuantía ≈ 1,4 %)", "additionalLossDb": 2.5 },
+      { "id": "medium", "name": "Media", "example": "8 barras Ø20 en una columna de 30 × 30 cm (cuantía ≈ 2,8 %)", "additionalLossDb": 5.0 },
+      { "id": "high", "name": "Alta", "example": "12 barras Ø20 en una columna de 30 × 30 cm (cuantía ≈ 4,2 %)", "additionalLossDb": 7.5 }
+    ],
+    "sources": [
+      "Orden de magnitud del adicional: diferencia entre el hormigón sin armar y el armado en las tablas publicadas. iBwave (2018): 'Concrete – Heavy' 22.792 / 44.769 dB. https://blog.ibwave.com/a-closer-look-at-attenuation-across-materials-the-2-4ghz-5ghz-bands/",
+      "Interline, Building Materials and Wi-Fi Signal Loss: 'Reinforced concrete' 25–30 dB or more / 50 dB or more. https://interline.pl/Information-and-Tips/Building-Materials-and-Wi-Fi-Signal-Loss-2.4-GHz-and-5-GHz"
+    ]
+  }
 }

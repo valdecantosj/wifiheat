@@ -8,7 +8,7 @@ namespace WifiHeat.AutoCAD.Reading;
 
 public sealed record DrawingWalls(IReadOnlyList<Wall> Walls, IReadOnlyList<ValidationIssue> Issues, DrawingUnit? Unit);
 
-/// <summary>Convierte las entidades de la capa de muros en muros de Core, en metros.</summary>
+/// <summary>Convierte las entidades de la capa de muros en muros y columnas de Core, en metros.</summary>
 public static class WallReader
 {
     public static DrawingWalls Read(Database db)
@@ -51,8 +51,8 @@ public static class WallReader
                 continue;
             }
 
-            (string? materialId, double? thicknessM) = WifiXData.ReadWall(entity);
-            walls.Add(new Wall(handle, segments, materialId, thicknessM));
+            StoredObstacle stored = WifiXData.ReadObstacle(entity);
+            walls.Add(new Wall(handle, segments, stored.MaterialId, stored.ThicknessM, stored.Kind, stored.Reinforcement));
         }
 
         return new DrawingWalls(walls, issues, unit);

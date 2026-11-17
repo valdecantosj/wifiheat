@@ -6,8 +6,8 @@ using WifiHeat.Core.Workflow;
 
 namespace WifiHeat.Core.Service;
 
-/// <summary>Muro de simulación tal como está en el dibujo. Longitud en metros.</summary>
-public sealed record WallInfo(string Handle, double LengthM, string Layer, string? MaterialId, double? ThicknessM);
+/// <summary>Muro o columna de simulación tal como está en el dibujo. Longitud (o perímetro de la columna) en metros.</summary>
+public sealed record WallInfo(string Handle, double LengthM, string Layer, string? MaterialId, double? ThicknessM, Reinforcement? Reinforcement = null, bool IsColumn = false);
 
 public sealed record AccessPointInfo(string Name, Vec2 PositionM, Band Band, double FrequencyMHz, double TxPowerDbm);
 
@@ -17,7 +17,8 @@ public sealed record ValidationItem(IssueSeverity Severity, string Code, string?
     public override string ToString() => new ValidationIssue(Severity, Code, Handle, Message).ToString();
 }
 
-public sealed record ValidationSummary(int WallCount, int ErrorCount, int WarningCount, BoundingBox? WallBounds, IReadOnlyList<ValidationItem> Items)
+/// <summary>WallCount incluye las columnas; ColumnCount dice cuántas son.</summary>
+public sealed record ValidationSummary(int WallCount, int ErrorCount, int WarningCount, BoundingBox? WallBounds, IReadOnlyList<ValidationItem> Items, int ColumnCount = 0)
 {
     public bool IsValid => ErrorCount == 0;
 }
@@ -92,11 +93,136 @@ public sealed record AxisGeneration(
     double MaxThicknessM,
     double MergeGapM,
     IReadOnlyList<string> Unpaired,
-    IReadOnlyList<string> PartlyUnpaired);
+    IReadOnlyList<string> PartlyUnpaired)
+{
+    /// <summary>Figuras cerradas pequeñas que no se usaron como caras: posibles columnas, una por contorno distinto.</summary>
+    public IReadOnlyList<string> SmallClosedFigures { get; init; } = [];
+}
+
+/// <summary>
+/// Figura del plano que puede ser una columna: un hatch o una polilínea cerrada. Kind: nombre del tipo de entidad.
+/// Polygon null: no se pudo leer como contorno de tramos rectos, y Error dice por qué. IsColumn: ya es una columna de simulación.
+/// </summary>
+public sealed record ClosedFigure(string Handle, string Kind, Polygon2? Polygon, string? Error, bool IsColumn = false);
+
+public sealed record NewColumn(Polygon2 Footprint, string MaterialId, Reinforcement Reinforcement);
+
+public sealed record ColumnUpdate(string Handle, string MaterialId, Reinforcement Reinforcement);
+
+/// <summary>
+/// Resultado de marcar columnas. Kept: figuras que coinciden con una columna que ya existía (se actualiza su armadura).
+/// Duplicates: figuras de la misma columna dentro de la selección (un hatch y su contorno). TooLarge e Invalid no se generaron.
+/// </summary>
+public sealed record ColumnGeneration(
+    int Created,
+    int Kept,
+    int Duplicates,
+    Reinforcement Reinforcement,
+    double AdditionalLossDb,
+    IReadOnlyList<string> ColumnHandles,
+    IReadOnlyList<string> TooLarge,
+    IReadOnlyList<string> Invalid)
+{
+    public int ColumnCount => Created + Kept;
+}
 
 public sealed record LayerFaces(string Layer, IReadOnlyList<FaceSegment> Faces);
 
 /// <summary>Eje creado antes por la generación automática, identificado por su marca en el dibujo.</summary>
 public sealed record GeneratedAxis(string Handle, Segment2 Axis);
 
-public sealed record NewAxis(Segment2 Axis, double ThicknessM);
+/// <summary>Eje a crear. MaterialId null = sin material.</summary>
+public sealed record NewAxis(Segment2 Axis, double ThicknessM, string? MaterialId = null);
+
+/// <summary>Línea o polilínea elegida en el dibujo, con sus tramos rectos en metros. IsWall: ya está en la capa de muros. Closed: polilínea cerrada.</summary>
+public sealed record EntityFaces(string Handle, string Layer, bool IsWall, IReadOnlyList<Segment2> Segments, bool Closed = false);
+
+/// <summary>Pares de caras de un mismo muro entre entidades que todavía no son muros. FaceHandles: las entidades emparejadas.</summary>
+public sealed record FacePairSurvey(int PairCount, IReadOnlyList<string> FaceHandles, double MinThicknessM, double MaxThicknessM)
+{
+    public static FacePairSurvey None { get; } = new(0, [], 0, 0);
+
+    public bool HasPairs => PairCount > 0;
+}
+
+/// <summary>
+/// Resultado de asignar material uniendo caras. AxesKept: ejes que ya existían en ese lugar y recibieron el material.
+/// FaceCount: entidades que quedaron como caras en su capa. SingleWalls: entidades sin par que pasaron a ser muros.
+/// </summary>
+public sealed record FaceJoin(
+    int AxesCreated,
+    int AxesKept,
+    int FaceCount,
+    int SingleWalls,
+    double MinThicknessM,
+    double MaxThicknessM,
+    IReadOnlyList<string> AxisHandles,
+    IReadOnlyList<string> PartlyUnpaired)
+{
+    public int AxisCount => AxesCreated + AxesKept;
+
+    public int WallCount => AxisCount + SingleWalls;
+}
+
+/// <summary>Muros de simulación paralelos y cercanos, que suman la pérdida dos veces.</summary>
+public sealed record ParallelWallsInfo(IReadOnlyList<string> Handles, double SeparationM, bool Convertible);
+
+/// <summary>Resultado de convertir muros paralelos en ejes. Skipped: muros que siguen igual porque tienen tramos largos sin par.</summary>
+public sealed record ParallelConversion(int AxesCreated, int FacesMoved, IReadOnlyList<string> AxisHandles, IReadOnlyList<string> Skipped);
+
+/// <summary>Qué muestra la imagen que ocupa la capa del mapa: la cobertura o la pérdida que agrega la armadura. Define el nombre del archivo.</summary>
+public enum OverlayImageKind
+{
+    Coverage,
+    ReinforcementEffect,
+}
+
+/// <summary>
+/// Resultado de «Ver efecto de la armadura». AffectedCells = 0: no hay nada que mostrar y el dibujo no se tocó.
+/// SessionCellSizeM es la resolución de la sesión, que no cambia; CellSizeM es la usada para este mapa.
+/// </summary>
+public sealed record ReinforcementEffectSummary(
+    int ReinforcedColumns,
+    int AffectedCells,
+    double MaxDb,
+    double CellSizeM,
+    double SessionCellSizeM,
+    bool ResolutionLowered,
+    string? ImagePath,
+    IReadOnlyList<string> Warnings)
+{
+    private static readonly System.Globalization.CultureInfo Es = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+
+    public bool NothingToShow => AffectedCells == 0;
+
+    /// <summary>Título del resultado, igual para el comando y el panel.</summary>
+    public string Headline => ReinforcedColumns == 0
+        ? "No hay columnas con armadura: no hay nada que mostrar"
+        : NothingToShow
+            ? "La armadura no agrega pérdida en el área de cobertura"
+            : string.Create(Es, $"Efecto máximo de la armadura: {MaxDb:0.##} dB");
+
+    /// <summary>Detalle del resultado: celdas afectadas y resolución usada.</summary>
+    public IReadOnlyList<string> Details
+    {
+        get
+        {
+            var lines = new List<string>();
+            if (ReinforcedColumns == 0)
+            {
+                lines.Add("Marcar las columnas con su nivel de armadura (WIFIWALL con material columna, o la sección Estructuras del panel).");
+            }
+            else if (NothingToShow)
+            {
+                lines.Add(string.Create(Es, $"Hay {ReinforcedColumns} columna(s) con armadura, pero ningún trayecto desde el AP las cruza dentro del área."));
+            }
+            else
+            {
+                lines.Add(string.Create(Es, $"{AffectedCells} celda(s) afectada(s) · resolución {CellSizeM:0.##} m."));
+                lines.Add("Es una diferencia en dB, no un nivel de señal. Para volver al mapa de cobertura: WIFICALCULATE.");
+            }
+
+            return lines;
+        }
+    }
+}

@@ -36,6 +36,9 @@ public sealed record AxisDetectionOptions
     public double ExtendToleranceM { get; init; } = 0.05;
 
     public double ReportGapM { get; init; } = 0.5;
+
+    /// <summary>False: dos tramos de la misma entidad (mismo id antes de «/») no forman par.</summary>
+    public bool PairWithinSameEntity { get; init; } = true;
 }
 
 /// <summary>
@@ -49,6 +52,13 @@ public static class WallAxisDetector
     private const double SameThicknessM = 0.02;
     private const double MinJoinAngleDeg = 10;
     private const double Tiny = 1e-9;
+
+    /// <summary>Id de la entidad de un tramo: lo que precede a «/» (handle o handle/índice).</summary>
+    public static string EntityId(string faceId)
+    {
+        int slash = faceId.IndexOf('/');
+        return slash < 0 ? faceId : faceId[..slash];
+    }
 
     /// <summary>Segmentos con los dos extremos dentro de la zona.</summary>
     public static IReadOnlyList<FaceSegment> InsideWindow(IEnumerable<FaceSegment> faces, BoundingBox window) =>
@@ -67,6 +77,7 @@ public static class WallAxisDetector
             {
                 Face a = lines[i], b = lines[j];
                 if (Math.Abs(Vec2.Cross(a.U, b.U)) > sinTol) continue;
+                if (!options.PairWithinSameEntity && a.Entity == b.Entity) continue;
 
                 (double from, double to) = a.Project(b);
                 double overlap = to - from;
@@ -230,6 +241,7 @@ public static class WallAxisDetector
     private sealed class Face(FaceSegment source)
     {
         public FaceSegment Source { get; } = source;
+        public string Entity { get; } = EntityId(source.Id);
         public Vec2 Start { get; } = source.Segment.A;
         public double Length { get; } = source.Segment.Length;
         public Vec2 U { get; } = Unit(source.Segment);

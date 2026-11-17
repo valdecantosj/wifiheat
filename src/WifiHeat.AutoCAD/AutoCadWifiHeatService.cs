@@ -137,6 +137,125 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
         tr.Commit();
     }
 
+    protected override IReadOnlyList<EntityFaces> ReadEntityFaces(IReadOnlyCollection<string> handles)
+    {
+        var result = new List<EntityFaces>();
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        foreach (string handle in handles)
+        {
+            if (!TryOpen(tr, handle, out Entity? entity) || entity is not (Line or Polyline)) continue;
+
+            bool isWall = string.Equals(entity.Layer, WifiHeatNames.WallLayer, StringComparison.OrdinalIgnoreCase);
+            bool closed = entity is Polyline polyline && ColumnReader.IsClosed(polyline, unit);
+            result.Add(new EntityFaces(entity.Handle.ToString(), entity.Layer, isWall, FaceReader.StraightSegments(unit, (Curve)entity), closed));
+        }
+
+        tr.Commit();
+        return result;
+    }
+
+    protected override IReadOnlyList<ClosedFigure> ReadClosedFigures(IReadOnlyCollection<string> handles)
+    {
+        var result = new List<ClosedFigure>();
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        foreach (string handle in handles)
+        {
+            if (TryOpen(tr, handle, out Entity? entity)) result.AddRange(ColumnReader.Read(entity!, unit));
+        }
+
+        tr.Commit();
+        return result;
+    }
+
+    protected override IReadOnlyList<ClosedFigure> ReadClosedFigures(BoundingBox windowM)
+    {
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        IReadOnlyList<ClosedFigure> figures = ColumnReader.ReadInside(Db, tr, DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres, windowM);
+        tr.Commit();
+        return figures;
+    }
+
+    protected override IReadOnlyList<string> WriteColumns(IReadOnlyList<NewColumn> create, IReadOnlyList<ColumnUpdate> update)
+    {
+        var handles = new List<string>(create.Count);
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        DrawingStore.EnsureAll(Db, tr);
+        foreach (ColumnUpdate column in update)
+        {
+            if (!TryOpen(tr, column.Handle, out Entity? entity)) continue;
+
+            entity!.UpgradeOpen();
+            WifiXData.WriteColumn(entity, column.MaterialId, column.Reinforcement);
+        }
+
+        BlockTableRecord modelSpace = ModelSpace.Open(Db, tr, OpenMode.ForWrite);
+        foreach (NewColumn column in create)
+        {
+            var outline = new Polyline { Layer = WifiHeatNames.WallLayer };
+            for (int i = 0; i < column.Footprint.Vertices.Count; i++)
+            {
+                Autodesk.AutoCAD.Geometry.Point3d p = ModelSpace.ToDrawing(unit, column.Footprint.Vertices[i]);
+                outline.AddVertexAt(i, new Autodesk.AutoCAD.Geometry.Point2d(p.X, p.Y), 0, 0, 0);
+            }
+
+            outline.Closed = true;
+            ModelSpace.Add(modelSpace, tr, outline);
+            WifiXData.WriteColumn(outline, column.MaterialId, column.Reinforcement, generated: true);
+            handles.Add(outline.Handle.ToString());
+        }
+
+        tr.Commit();
+        return handles;
+    }
+
+    protected override IReadOnlyList<string> CreateAxes(IReadOnlyList<NewAxis> axes)
+    {
+        var handles = new List<string>(axes.Count);
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingUnit unit = DrawingStore.ReadUnit(Db, tr) ?? DrawingUnit.Metres;
+        DrawingStore.EnsureAll(Db, tr);
+        BlockTableRecord modelSpace = ModelSpace.Open(Db, tr, OpenMode.ForWrite);
+        foreach (NewAxis axis in axes)
+        {
+            var line = new Line(ModelSpace.ToDrawing(unit, axis.Axis.A), ModelSpace.ToDrawing(unit, axis.Axis.B))
+            {
+                Layer = WifiHeatNames.WallLayer,
+            };
+            ModelSpace.Add(modelSpace, tr, line);
+            WifiXData.WriteWall(line, axis.MaterialId ?? "", axis.ThicknessM, generatedAxis: false);
+            handles.Add(line.Handle.ToString());
+        }
+
+        tr.Commit();
+        return handles;
+    }
+
+    protected override void RetireFaces(IReadOnlyList<string> handles)
+    {
+        using DocumentLock _ = Document.LockDocument();
+        using Transaction tr = Db.TransactionManager.StartTransaction();
+        DrawingStore.EnsureRegApp(Db, tr);
+        DrawingStore.EnsureLayer(Db, tr, WifiHeatNames.FaceLayer, 8);
+        foreach (string handle in handles)
+        {
+            if (!TryOpen(tr, handle, out Entity? entity)) continue;
+
+            entity!.UpgradeOpen();
+            WifiXData.Clear(entity);
+            entity.Layer = WifiHeatNames.FaceLayer;
+        }
+
+        tr.Commit();
+    }
+
     protected override IReadOnlyList<string> WriteWalls(IReadOnlyList<WallAssignment> assignments)
     {
         var missing = new List<string>();
@@ -172,7 +291,7 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
         return null;
     }
 
-    protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent)
+    protected override OverlayOutcome DrawResult(RssiGrid grid, HeatmapImage image, Legend legend, int fadePercent, OverlayImageKind kind)
     {
         using DocumentLock _ = Document.LockDocument();
         DrawingUnit unit = DrawingStore.ReadUnit(Db) ?? DrawingUnit.Metres;
@@ -181,7 +300,7 @@ public sealed class AutoCadWifiHeatService(Document document, SimulationSession 
         using (Transaction tr = Db.TransactionManager.StartTransaction())
         {
             DrawingStore.EnsureAll(Db, tr);
-            overlay = RasterOverlayRenderer.Render(Db, tr, unit, image, folder, baseName, fadePercent);
+            overlay = RasterOverlayRenderer.Render(Db, tr, unit, image, folder, baseName, fadePercent, kind);
             LegendRenderer.Render(Db, tr, unit, grid.Spec, legend, fadePercent);
             tr.Commit();
         }

@@ -132,7 +132,7 @@ public static class PathCrossings
 
     private sealed record Contact(ResolvedWall Wall, List<(double From, double To)> Spans)
     {
-        public double LossDb(Band band) => Wall.Material.LossDb(band);
+        public double LossDb(Band band) => Wall.LossDb(band);
 
         public bool Touches(Contact other)
         {

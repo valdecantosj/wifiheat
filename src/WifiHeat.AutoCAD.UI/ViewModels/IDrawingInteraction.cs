@@ -15,8 +15,10 @@ public interface IDrawingInteraction
 
     Task<BoundingBox?> PickWindowAsync(string prompt);
 
-    /// <summary>Handles de las líneas y polilíneas elegidas. Si ya hay una selección en el dibujo, la usa sin preguntar.</summary>
-    Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt);
+    /// <summary>
+    /// Handles de las líneas y polilíneas elegidas (y de los hatches, si se piden). Si ya hay una selección en el dibujo, la usa sin preguntar.
+    /// </summary>
+    Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt, bool includeHatches = false);
 
     Task<string?> PickPolylineAsync(string prompt);
 
