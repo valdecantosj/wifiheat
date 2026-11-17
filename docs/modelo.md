@@ -30,6 +30,48 @@ Reglas de conteo:
 - Cada muro cuenta a lo sumo una vez, aunque el trayecto lo toque en un vértice o en varios de sus tramos.
 - Si el trayecto toca varios muros en el mismo punto (con una tolerancia de 1 mm), como en una unión en T, un cruce o una esquina formada por dos muros, ese punto aporta una sola vez la pérdida mayor de esos muros. Lo mismo vale para dos muros superpuestos.
 - Los muros que el trayecto toca en puntos distintos se suman.
+- Una línea o una polilínea es un solo obstáculo. Para separar muros hay que usar entidades distintas.
+- Un muro dibujado con sus dos caras son dos entidades y sumaría dos veces. Por eso las caras se reemplazan por un eje a mitad de distancia, y la validación avisa (`DOBLE CONTEO`) si quedan dos muros paralelos a menos de 0,50 m.
+
+## Columnas de hormigón armado
+
+$$L_{columna}\,[\mathrm{dB}] = L_{hormigón}(\text{banda}) + \Delta_{armadura}$$
+
+| Símbolo | Significado | Unidad |
+| --- | --- | --- |
+| $L_{columna}$ | Pérdida de una columna cruzada por el trayecto | dB |
+| $L_{hormigón}$ | Pérdida del hormigón según la banda, de `config/materials.json` | dB |
+| $\Delta_{armadura}$ | Adicional por nivel de armadura, igual en las dos bandas | dB |
+
+| Armadura | Ejemplo en una columna de 30 × 30 cm | Cuantía | $\Delta_{armadura}$ |
+| --- | --- | --- | --- |
+| Baja | 4 barras Ø20 | ≈ 1,4 % | 2,5 dB |
+| Media | 8 barras Ø20 | ≈ 2,8 % | 5 dB |
+| Alta | 12 barras Ø20 | ≈ 4,2 % | 7,5 dB |
+
+Por qué: el acero de la armadura refleja y dispersa parte de la señal, además de lo que atenúa el hormigón.
+
+Los adicionales son una convención de este proyecto, no un dato publicado: no hay una tabla que relacione la cuantía de acero con decibeles. Su orden de magnitud sale de comparar las tablas de hormigón sin armar (22,8 / 44,8 dB en iBwave) con las de hormigón armado (25–30 dB o más / 50 dB o más en Interline), que difieren en unos 5 dB. Las cuantías son un cálculo geométrico: área de las barras sobre el área de la columna.
+
+Reglas de conteo:
+
+- La columna es un contorno cerrado y cuenta una sola vez por trayecto, aunque este corte dos de sus lados o roce una esquina.
+- Si la columna toca un muro en el punto donde pasa el trayecto (tolerancia de 1 mm), vale la regla de las uniones: se cuenta una vez la pérdida mayor.
+- Si el AP o el punto consultado están dentro de una columna, no se calcula y se avisa.
+
+Límites: el modelo solo considera el trayecto directo, sin difracción ni rebotes, así que detrás de la columna aparece una sombra en cuña que en la realidad se rellena en parte. La armadura real (barras y estribos separados 10 a 20 cm, frente a una longitud de onda de unos 12 cm en 2,4 GHz y 6 cm en 5 GHz) no es una malla cerrada. La altura no interviene: el plano es 2D.
+
+### Mapa del efecto de la armadura
+
+Además del mapa de cobertura se puede dibujar la diferencia entre dos cálculos de la misma escena: el normal y otro con las columnas como hormigón sin armadura ($\Delta_{armadura} = 0$). Por celda:
+
+$$\Delta L\,[\mathrm{dB}] = L_{materiales}(\text{con armadura}) - L_{materiales}(\text{sin armadura}) = P_{RX}(\text{sin armadura}) - P_{RX}(\text{normal})$$
+
+- **Es una diferencia en dB, no un nivel de señal.** Los colores (de amarillo claro a rojo oscuro, cinco tramos entre 0 y el máximo) no se comparan con la escala de RSSI.
+- Una celda vale 0 y queda transparente si el trayecto desde el AP no cruza ninguna columna, o si cruza una pero en una unión con un muro de mayor pérdida (se cuenta una vez la mayor y la armadura no agrega nada).
+- Con una columna el valor es su adicional (2,5; 5 o 7,5 dB); un trayecto que cruza dos columnas suma los adicionales de ambas.
+- Se calcula con una celda de 0,20 m como máximo, para que se vea la sombra de una columna de 0,30 m. Si la resolución elegida era mayor, solo este mapa usa 0,20 m.
+- Los adicionales por nivel de armadura son una convención del proyecto (ver arriba): el mapa muestra el efecto de esa convención, no una medición.
 
 ## Balance de enlace
 
@@ -70,6 +112,28 @@ El mapa de calor usa un degradé continuo: el color se interpola linealmente en 
 
 Así, el color puro aparece en el centro de cada intervalo y en los límites se ve la mezcla de los dos colores vecinos. La leyenda y la consulta de un punto usan los mismos seis colores y los mismos límites de la tabla anterior.
 
+## Limitaciones
+
+- **Modelo 2D, sin pisos ni alturas.** El plano es una sola planta. No hay pérdida entre pisos y no se consideran las alturas del AP, del receptor ni de los muros y las aberturas.
+- **Antena isotrópica.** La ganancia se aplica igual en todas las direcciones: no hay diagrama de radiación, orientación ni polarización.
+- **Materiales de tablas publicadas, no medidos.** Los valores de `config/materials.json` salen de fuentes de práctica profesional y no son mediciones propias. El del ladrillo hueco es un supuesto intermedio entre la placa de yeso y el ladrillo macizo, sin fuente directa.
+- **El espesor no cambia la pérdida.** Cada muro cruzado resta el valor completo de su material, sea de 10 o de 30 cm.
+- **Armadura por niveles como convención.** Los adicionales de 2,5, 5 y 7,5 dB son una convención del proyecto, no una relación medida entre cuantía de acero y decibeles.
+- **Sin difracción ni reflexiones.** El modelo solo considera el trayecto directo.
+
+### Difracción
+
+La señal real rodea los obstáculos angostos, y el modelo no lo representa. Ejemplo: una columna de 30 cm a 5 GHz.
+
+- En el modelo, atravesarla cuesta 49,8 dB: 44,8 dB del hormigón más 5 dB de armadura media.
+- Una estimación por filo de cuchilla del camino que la rodea da del orden de 12 dB. Con el AP y el punto a 3 m de la columna cada uno y el punto detrás de su eje, $v \approx 0{,}72$ y la aproximación de ITU-R P.526, $J(v) = 6{,}9 + 20\log_{10}\left(\sqrt{(v-0{,}1)^2+1} + v - 0{,}1\right)$, da unos 12 dB. Es una estimación teórica, no una medición.
+
+Por eso la sombra detrás de columnas angostas está sobrestimada: el modelo resta más de cuatro veces la pérdida estimada del camino que rodea la columna.
+
+### Reflexiones y error esperable
+
+En interiores la señal también llega por rebotes en paredes, techo y piso, que no se calculan. Los modelos multi-pared de este tipo tienen errores típicos de 5 a 10 dB frente a mediciones, y el mapa debe leerse como una estimación orientativa de la cobertura, no como una predicción de la potencia en cada punto.
+
 ## Referencias
 
 1. ITU-R, Recomendación P.525-5 (11/2024), *Calculation of free-space attenuation*. Pérdida básica de transmisión en el espacio libre.
@@ -78,4 +142,9 @@ Así, el color puro aparece en el centro de cada intervalo y en los límites se 
 4. T. S. Rappaport, *Wireless Communications: Principles and Practice*, 2.ª ed., Prentice Hall, 2002. Modelo de espacio libre (sec. 4.2) y pérdidas por tabiques en interiores (sec. 4.11.1).
 5. ITU-R, Recomendación P.2040-4 (09/2025), *Effects of building materials and structures on radiowave propagation in the range of 1 MHz to 450 GHz*. Efecto de los materiales de construcción.
 
-Los valores de cada material y sus fuentes están en `config/materials.json`.
+6. iBwave, *A closer look at attenuation across materials & the 2.4 GHz & 5 GHz bands* (2018). Pérdida por material: «Concrete – Heavy» 22,792 / 44,769 dB. https://blog.ibwave.com/a-closer-look-at-attenuation-across-materials-the-2-4ghz-5ghz-bands/
+7. Interline, *Building Materials and Wi-Fi Signal Loss (2.4 GHz and 5 GHz)*. «Reinforced concrete»: 25–30 dB o más / 50 dB o más. https://interline.pl/Information-and-Tips/Building-Materials-and-Wi-Fi-Signal-Loss-2.4-GHz-and-5-GHz
+
+8. ITU-R, Recomendación P.526, *Propagation by diffraction*. Aproximación de la pérdida por un filo de cuchilla, $J(v)$.
+
+Los valores de cada material, los adicionales de armadura y sus fuentes están en `config/materials.json`.

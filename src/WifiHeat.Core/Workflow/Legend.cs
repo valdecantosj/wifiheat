@@ -20,6 +20,17 @@ public sealed record Legend(string Title, IReadOnlyList<string> Details, IReadOn
         ],
         SignalScale.Levels);
 
+    public const string ReinforcementEffectTitle = "Pérdida que agrega la armadura (dB)";
+
+    /// <summary>Leyenda del mapa de efecto de la armadura: diferencia en dB, no nivel de señal.</summary>
+    public static Legend ForReinforcementEffect(RadioSettings settings, EffectScale scale) => new(
+        ReinforcementEffectTitle,
+        [
+            string.Create(Es, $"Banda {BandInfo.Label(settings.Band)} ({settings.FrequencyMHz:0} MHz)"),
+            "Diferencia con columnas sin armadura",
+        ],
+        scale.Levels());
+
     /// <summary>Alto de fila proporcional al tamaño del mapa, con un mínimo legible.</summary>
     public static double RowHeightM(double mapExtentM) => Math.Max(mapExtentM / 30.0, 0.2);
 }

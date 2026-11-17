@@ -51,21 +51,21 @@ internal sealed class AutoCadInteraction(Document document) : IDrawingInteractio
         return new BoundingBox(new Vec2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y)), new Vec2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y)));
     });
 
-    public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt)
+    public Task<IReadOnlyList<string>?> PickEntitiesAsync(string prompt, bool includeHatches = false)
     {
         PromptSelectionResult current = document.Editor.SelectImplied();
         if (current.Status == PromptStatus.OK)
         {
-            string[] preselected = Handles(current.Value.GetObjectIds());
+            string[] preselected = Handles(current.Value.GetObjectIds(), includeHatches);
             if (preselected.Length > 0) return Task.FromResult<IReadOnlyList<string>?>(preselected);
         }
 
         return InCommandAsync<IReadOnlyList<string>?>(ed =>
         {
             var options = new PromptSelectionOptions { MessageForAdding = $"\n{prompt}" };
-            var filter = new SelectionFilter([new TypedValue((int)DxfCode.Start, "LINE,LWPOLYLINE")]);
+            var filter = new SelectionFilter([new TypedValue((int)DxfCode.Start, includeHatches ? "LINE,LWPOLYLINE,HATCH" : "LINE,LWPOLYLINE")]);
             PromptSelectionResult answer = ed.GetSelection(options, filter);
-            return answer.Status == PromptStatus.OK ? Handles(answer.Value.GetObjectIds()) : null;
+            return answer.Status == PromptStatus.OK ? Handles(answer.Value.GetObjectIds(), includeHatches) : null;
         });
     }
 
@@ -186,8 +186,9 @@ internal sealed class AutoCadInteraction(Document document) : IDrawingInteractio
         return DrawingUnits.ToMetres(unit, world.X, world.Y);
     }
 
-    private static string[] Handles(ObjectId[] ids) =>
-        [.. ids.Where(id => id.ObjectClass.DxfName is "LINE" or "LWPOLYLINE").Select(id => id.Handle.ToString())];
+    private static string[] Handles(ObjectId[] ids, bool includeHatches) =>
+        [.. ids.Where(id => id.ObjectClass.DxfName is "LINE" or "LWPOLYLINE" || (includeHatches && id.ObjectClass.DxfName == "HATCH"))
+            .Select(id => id.Handle.ToString())];
 
     /// <summary>Encuadra la vista actual en la envolvente dada (coordenadas universales), con margen.</summary>
     private static void ZoomTo(Editor ed, Extents3d extents)

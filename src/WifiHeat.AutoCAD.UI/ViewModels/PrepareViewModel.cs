@@ -51,13 +51,17 @@ public sealed class PrepareViewModel : ObservableObject
     private string _mergeGapText = NumberText.Format(AxisDefaults.MergeGapM, "0.00");
     private string _axisSummary = "";
     private IReadOnlyList<string> _unpaired = [];
+    private IReadOnlyList<string> _smallFigures = [];
 
     internal PrepareViewModel(PanelViewModel owner)
     {
         _owner = owner;
         PickWindowCommand = RelayCommand.Async(PickWindowAsync);
         GenerateAxesCommand = new RelayCommand(GenerateAxes);
+        PickLinesCommand = RelayCommand.Async(PickLinesAsync);
         ShowUnpairedCommand = new RelayCommand(ShowUnpaired);
+        MarkColumnsCommand = new RelayCommand(MarkColumns);
+        ShowSmallFiguresCommand = new RelayCommand(ShowSmallFigures);
     }
 
     public IReadOnlyList<UnitOption> Units { get; } =
@@ -72,6 +76,9 @@ public sealed class PrepareViewModel : ObservableObject
     public RelayCommand PickWindowCommand { get; }
 
     public RelayCommand GenerateAxesCommand { get; }
+
+    /// <summary>Genera ejes solo entre las líneas elegidas en el dibujo, sin importar su capa.</summary>
+    public RelayCommand PickLinesCommand { get; }
 
     public RelayCommand ShowUnpairedCommand { get; }
 
@@ -129,6 +136,17 @@ public sealed class PrepareViewModel : ObservableObject
     }
 
     public bool HasAxisSummary => _axisSummary.Length > 0;
+
+    /// <summary>Figuras cerradas pequeñas que la generación de ejes dejó afuera: posibles columnas.</summary>
+    public bool HasSmallFigures => _smallFigures.Count > 0;
+
+    public string SmallFiguresText => _smallFigures.Count == 1
+        ? "Se detectó 1 figura cerrada pequeña (posible columna)."
+        : $"Se detectaron {_smallFigures.Count} figuras cerradas pequeñas (posibles columnas).";
+
+    public RelayCommand MarkColumnsCommand { get; }
+
+    public RelayCommand ShowSmallFiguresCommand { get; }
 
     public bool HasUnpaired => _unpaired.Count > 0;
 
@@ -200,18 +218,82 @@ public sealed class PrepareViewModel : ObservableObject
                 return;
             }
 
-            AxisGeneration g = result.Value!;
-            _unpaired = [.. g.Unpaired.Concat(g.PartlyUnpaired).Select(id => id.Split('/')[0]).Distinct()];
-            OnPropertyChanged(nameof(HasUnpaired));
-            OnPropertyChanged(nameof(UnpairedText));
-            AxisSummary = g.AxisCount == 0
-                ? "Sin ejes: no hay pares de caras paralelas en las capas elegidas."
-                : $"{g.AxisCount} eje(s): {g.Created} creado(s), {g.Kept} conservado(s), {g.Removed} reemplazado(s). " +
-                  $"Espesor {NumberText.Format(g.MinThicknessM, "0.###")} a {NumberText.Format(g.MaxThicknessM, "0.###")} m. Falta asignarles material.";
-            _owner.Reload();
-            if (g.AxisCount == 0) _owner.Report(StatusKind.Warning, "No se generaron ejes", string.Join(" ", result.Warnings.DefaultIfEmpty("No hay pares de caras paralelas en las capas marcadas.")));
-            else _owner.Report(result, "No se generaron ejes", $"{g.AxisCount} eje(s) de muro generados", "Falta asignarles material en «3 · Estructuras (muros)».");
+            ShowGeneration(result, "No hay pares de caras paralelas en las capas marcadas.");
         });
+    }
+
+    public async Task PickLinesAsync()
+    {
+        if (!_owner.RequireUnit()) return;
+        if (!TryGetMergeGap(out double gap)) return;
+
+        await _owner.RunAsync(PanelMode.PickFaces, async () =>
+        {
+            IReadOnlyList<string>? handles = await _owner.Interaction.PickEntitiesAsync("Seleccionar las líneas de las caras de los muros");
+            if (handles is null)
+            {
+                _owner.Report(StatusKind.Info, "Selección de líneas cancelada");
+                return;
+            }
+
+            if (handles.Count == 0)
+            {
+                _owner.Report(StatusKind.Warning, "No se eligió ninguna línea", "Elegir las líneas de las dos caras de cada muro.");
+                return;
+            }
+
+            OperationResult<AxisGeneration> result = _owner.Service.GenerateAxesFromSelection(handles, gap);
+            if (!result.Succeeded)
+            {
+                _owner.Report(result, "No se generaron ejes", "");
+                return;
+            }
+
+            ShowGeneration(result, "No hay pares de caras paralelas entre las líneas elegidas.");
+        });
+    }
+
+    public void MarkColumns()
+    {
+        if (_smallFigures.Count > 0 && _owner.Walls.MarkColumns(_smallFigures)) SetSmallFigures([]);
+    }
+
+    public void ShowSmallFigures()
+    {
+        if (_smallFigures.Count > 0) _owner.Run(() => _owner.Interaction.Show(_smallFigures, zoom: true));
+    }
+
+    private void ShowGeneration(OperationResult<AxisGeneration> result, string noPairs)
+    {
+        AxisGeneration g = result.Value!;
+        _unpaired = [.. g.Unpaired.Concat(g.PartlyUnpaired).Select(id => id.Split('/')[0]).Distinct()];
+        OnPropertyChanged(nameof(HasUnpaired));
+        OnPropertyChanged(nameof(UnpairedText));
+        SetSmallFigures(g.SmallClosedFigures);
+        AxisSummary = g.AxisCount == 0
+            ? "Sin ejes: no hay pares de caras paralelas."
+            : $"{g.AxisCount} eje(s): {g.Created} creado(s), {g.Kept} conservado(s), {g.Removed} reemplazado(s). " +
+              $"Espesor {NumberText.Format(g.MinThicknessM, "0.###")} a {NumberText.Format(g.MaxThicknessM, "0.###")} m. Falta asignarles material.";
+        _owner.Reload();
+
+        MessageAction[] actions = HasSmallFigures ? [new MessageAction("Marcar como columnas", MarkColumnsCommand)] : [];
+        string columns = HasSmallFigures ? $" {SmallFiguresText}" : "";
+        if (g.AxisCount == 0)
+        {
+            _owner.Report(StatusKind.Warning, "No se generaron ejes", string.Join(" ", result.Warnings.DefaultIfEmpty(noPairs)) + columns, actions);
+        }
+        else
+        {
+            _owner.Report(result, "No se generaron ejes", $"{g.AxisCount} eje(s) de muro generados",
+                $"Falta asignarles material en «3 · Estructuras».{columns}", actions);
+        }
+    }
+
+    private void SetSmallFigures(IReadOnlyList<string> handles)
+    {
+        _smallFigures = handles;
+        OnPropertyChanged(nameof(HasSmallFigures));
+        OnPropertyChanged(nameof(SmallFiguresText));
     }
 
     public void ShowUnpaired()

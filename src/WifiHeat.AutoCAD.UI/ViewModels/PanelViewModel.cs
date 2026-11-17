@@ -184,13 +184,14 @@ public sealed class PanelViewModel : ObservableObject
         }
     }
 
-    internal void Report(StatusKind kind, string title, string detail = "") => Messages.Post(kind, title, detail);
+    internal void Report(StatusKind kind, string title, string detail = "", params MessageAction[] actions) =>
+        Messages.Post(kind, title, detail, actions);
 
     /// <summary>
     /// Error con los motivos o, si salió bien, éxito; con avisos queda como advertencia con el mismo título.
     /// Devuelve si la operación salió bien.
     /// </summary>
-    internal bool Report<T>(OperationResult<T> result, string failure, string success, string detail = "")
+    internal bool Report<T>(OperationResult<T> result, string failure, string success, string detail = "", params MessageAction[] actions)
     {
         if (!result.Succeeded)
         {
@@ -198,8 +199,8 @@ public sealed class PanelViewModel : ObservableObject
             return false;
         }
 
-        if (result.Warnings.Count > 0) Report(StatusKind.Warning, success, string.Join(" ", result.Warnings.Prepend(detail).Where(t => t.Length > 0)));
-        else Report(StatusKind.Success, success, detail);
+        if (result.Warnings.Count > 0) Report(StatusKind.Warning, success, string.Join(" ", result.Warnings.Prepend(detail).Where(t => t.Length > 0)), actions);
+        else Report(StatusKind.Success, success, detail, actions);
         return true;
     }
 

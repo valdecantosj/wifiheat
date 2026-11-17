@@ -30,16 +30,21 @@ public sealed class ValidationViewModel : ObservableObject
     private int _wallCount;
     private int _errorCount;
     private int _warningCount;
+    private int _doubleCountGroups;
 
     internal ValidationViewModel(PanelViewModel owner)
     {
         _owner = owner;
         ValidateCommand = new RelayCommand(Validate);
+        ConvertParallelCommand = new RelayCommand(ConvertParallel);
     }
 
     public ObservableCollection<ValidationItemViewModel> Items { get; } = [];
 
     public RelayCommand ValidateCommand { get; }
+
+    /// <summary>Reemplaza por un eje cada grupo de muros paralelos que suma dos veces.</summary>
+    public RelayCommand ConvertParallelCommand { get; }
 
     public bool HasRun
     {
@@ -64,6 +69,24 @@ public sealed class ValidationViewModel : ObservableObject
         get => _warningCount;
         private set => SetField(ref _warningCount, value);
     }
+
+    /// <summary>Grupos de muros paralelos a menos de 0,50 m (las dos caras de un mismo muro).</summary>
+    public int DoubleCountGroups
+    {
+        get => _doubleCountGroups;
+        private set
+        {
+            if (!SetField(ref _doubleCountGroups, value)) return;
+            OnPropertyChanged(nameof(HasDoubleCount));
+            OnPropertyChanged(nameof(DoubleCountText));
+        }
+    }
+
+    public bool HasDoubleCount => _doubleCountGroups > 0;
+
+    public string DoubleCountText => _doubleCountGroups == 1
+        ? "Hay 1 grupo de muros paralelos a menos de 0,50 m: son las dos caras de un mismo muro y suman la pérdida dos veces."
+        : $"Hay {_doubleCountGroups} grupos de muros paralelos a menos de 0,50 m: son las dos caras de un mismo muro y suman la pérdida dos veces.";
 
     public bool IsValid => HasRun && ErrorCount == 0;
 
@@ -101,9 +124,45 @@ public sealed class ValidationViewModel : ObservableObject
     public void Validate() => _owner.Run(() =>
     {
         _owner.Reload();
-        if (ErrorCount > 0) _owner.Report(StatusKind.Error, $"El plano tiene {ErrorCount} error(es)", "Elegir cada uno en la lista para ubicarlo en el dibujo.");
-        else if (WarningCount > 0) _owner.Report(StatusKind.Warning, $"Plano válido con {WarningCount} aviso(s)", "Revisarlos en la lista de «2 · Plano y validación».");
-        else _owner.Report(StatusKind.Success, "Plano válido", $"{WallCount} muro(s), sin errores.");
+        if (ErrorCount > 0)
+        {
+            _owner.Report(StatusKind.Error, $"El plano tiene {ErrorCount} error(es)", "Elegir cada uno en la lista para ubicarlo en el dibujo.");
+        }
+        else if (HasDoubleCount)
+        {
+            _owner.Report(StatusKind.Warning, "Hay muros que suman la pérdida dos veces", DoubleCountText,
+                new MessageAction("Convertir en ejes", ConvertParallelCommand));
+        }
+        else if (WarningCount > 0)
+        {
+            _owner.Report(StatusKind.Warning, $"Plano válido con {WarningCount} aviso(s)", "Revisarlos en la lista de «2 · Plano y validación».");
+        }
+        else
+        {
+            _owner.Report(StatusKind.Success, "Plano válido", $"{WallCount} muro(s), sin errores.");
+        }
+    });
+
+    public void ConvertParallel() => _owner.Run(() =>
+    {
+        OperationResult<ParallelConversion> result = _owner.Service.ConvertParallelWalls();
+        _owner.Reload();
+        if (!result.Succeeded)
+        {
+            _owner.Report(result, "No se pudieron convertir los muros", "");
+            return;
+        }
+
+        ParallelConversion c = result.Value!;
+        if (c.FacesMoved == 0)
+        {
+            _owner.Report(StatusKind.Warning, "No se convirtió ningún muro", string.Join(" ", result.Warnings));
+            return;
+        }
+
+        _owner.Report(result, "No se pudieron convertir los muros",
+            c.AxesCreated == 1 ? "1 eje creado en lugar de las dos caras" : $"{c.AxesCreated} ejes creados en lugar de las caras",
+            $"{c.FacesMoved} cara(s) pasaron a la capa WIFIHEAT_CARAS, que no se lee como muro.");
     });
 
     internal void Update(ValidationSummary summary)
@@ -116,6 +175,7 @@ public sealed class ValidationViewModel : ObservableObject
         WallCount = summary.WallCount;
         ErrorCount = summary.ErrorCount;
         WarningCount = summary.WarningCount;
+        DoubleCountGroups = summary.Items.Count(i => i.Code == ValidationIssue.DoubleCount);
         HasRun = true;
         OnPropertyChanged(nameof(IsValid));
         OnPropertyChanged(nameof(HasItems));

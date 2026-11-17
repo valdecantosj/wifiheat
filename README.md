@@ -25,20 +25,21 @@ Para usar además el panel, cargar con `NETLOAD` las dos DLL de `src\WifiHeat.Au
 | --- | --- |
 | `WIFI` | Muestra la versión y los comandos disponibles. |
 | `WIFISETUP` | Crea las capas `WIFIHEAT_MUROS`, `WIFIHEAT_AP`, `WIFIHEAT_OVERLAY` y `WIFIHEAT_LEYENDA`, y guarda en el dibujo la unidad de trabajo (metros, centímetros o milímetros). |
-| `WIFIEJES` | Opcional, para planos con muros dibujados con sus dos caras. Pide la zona de la planta (un rectángulo que encierre una sola planta), las capas de las caras (sugiere `muros`; las capas `0` y `ventanas` solo se procesan si se nombran) y el umbral de unión de tramos (0,20 m por defecto). Propone un eje a mitad de distancia entre cada par de segmentos paralelos separados hasta 0,50 m, une los tramos alineados cuya separación no supera el umbral y cierra esquinas y uniones en T. Crea los ejes en `WIFIHEAT_MUROS` con el espesor estimado y sin material, sin modificar las entidades originales, e informa los segmentos que quedaron sin par. Al repetirlo sobre la misma zona no duplica: conserva los ejes que coinciden (con su material) y reemplaza el resto de los generados antes. |
-| `WIFIWALL` | Asigna material y espesor a las líneas o polilíneas seleccionadas y las pasa a `WIFIHEAT_MUROS`. Enter en el espesor conserva el de cada muro (0,15 m si no tiene). |
-| `WIFIVALIDATE` | Lee los muros y lista errores y avisos con el handle de cada entidad (por ejemplo, `FALTA PROPIEDAD`). |
+| `WIFIEJES` | Opcional, para planos con muros dibujados con sus dos caras. Pide la zona de la planta (un rectángulo que encierre una sola planta), las capas de las caras (sugiere `muros`; las capas `0` y `ventanas` solo se procesan si se nombran) y el umbral de unión de tramos (0,20 m por defecto). Propone un eje a mitad de distancia entre cada par de segmentos paralelos separados hasta 0,50 m, une los tramos alineados cuya separación no supera el umbral y cierra esquinas y uniones en T. Crea los ejes en `WIFIHEAT_MUROS` con el espesor estimado y sin material, sin modificar las entidades originales, e informa los segmentos que quedaron sin par. Al repetirlo sobre la misma zona no duplica: conserva los ejes que coinciden (con su material) y reemplaza el resto de los generados antes. Las polilíneas cerradas de hasta 1,5 m de lado y los hatches no se toman como caras: se informan como posibles columnas. La opción `Líneas`, en lugar de la zona, aplica el mismo detector solo a las líneas y polilíneas que se elijan, sin importar su capa; no borra nada y conserva los ejes que ya existan en ese lugar. |
+| `WIFIWALL` | Asigna material y espesor a las líneas o polilíneas seleccionadas y las pasa a `WIFIHEAT_MUROS`. Enter en el espesor conserva el de cada muro (0,15 m si no tiene). Si la selección trae las dos caras de un mismo muro (paralelas, a no más de 0,50 m), pregunta `Unir caras [Sí/No]`: con Sí crea un eje con el material elegido y el espesor medido, deja las caras en su capa y solo las líneas sin par pasan a `WIFIHEAT_MUROS`. Si en lugar del material se escribe `columna`, marca como columnas de hormigón armado los hatches y las polilíneas cerradas elegidos y pide la armadura (baja, media o alta): crea una polilínea cerrada por columna en `WIFIHEAT_MUROS` sin tocar las figuras originales. Un hatch y su contorno dan una sola columna, repetir no duplica, y las figuras de más de 1,5 m de lado o con arcos o islas no se generan. |
+| `WIFIVALIDATE` | Lee los muros y las columnas y lista errores y avisos con el handle de cada entidad (por ejemplo, `FALTA PROPIEDAD`). Avisa `DOBLE CONTEO` cuando dos muros son paralelos y están a menos de 0,50 m (las dos caras de un mismo muro, que sumarían dos veces) y ofrece convertirlos en un eje; las caras pasan a la capa `WIFIHEAT_CARAS`, que no se lee como muro. |
 | `WIFIADDAP` | Ubica el punto de acceso y pide banda (2,4 o 5 GHz) y potencia de transmisión. |
 | `WIFIAREA` | Opcional. Define el área de cobertura con una polilínea cerrada de tramos rectos; la opción `Rectángulo` vuelve al valor por defecto, el rectángulo que encierra los muros. Fuera del área no se calcula ni se pinta. |
 | `WIFICALCULATE` | Calcula la grilla y dibuja el mapa de calor y la leyenda. Opciones: `Resolución` (tamaño de celda, 0,50 m por defecto, entre 0,10 y 5 m) y `Atenuación` (0 a 90 %, 40 % por defecto, que se aplica también al mapa ya dibujado); los valores se mantienen mientras el dibujo esté abierto. El mapa es una imagen PNG con degradé continuo, opaca dentro del área y transparente fuera (`<dibujo>_wifiheat_NNN.png`, un archivo nuevo por cálculo junto al DWG, o en la carpeta temporal si el dibujo no está guardado; se borran los anteriores). Se inserta en `WIFIHEAT_OVERLAY` debajo del resto del dibujo y se atenúa con la propiedad Atenuación (Fade) de la imagen. |
-| `WIFIQUERY` | Explica el RSSI estimado en un punto: distancia, muros cruzados, pérdidas y potencia recibida. |
+| `WIFIQUERY` | Explica el RSSI estimado en un punto: distancia, muros y columnas cruzados, pérdidas y potencia recibida. Si el punto o el AP están dentro de una columna, lo avisa en lugar de calcular. |
+| `WIFIARMADURA` | Reemplaza el mapa por la pérdida en dB que suma la armadura de las columnas: la diferencia entre el cálculo normal y el mismo cálculo con las columnas como hormigón sin armadura. Solo se pinta el trayecto que cruza alguna columna (7,5 dB por cruce con armadura alta); el resto queda transparente. No es un nivel de señal. Usa una resolución de 0,20 m como máximo (si la de la sesión era mayor, lo avisa y la sesión no cambia), con su propia leyenda y una imagen `<dibujo>_wifiarmadura_NNN.png`. Informa el efecto máximo, las celdas afectadas y la resolución usada; sin columnas con armadura avisa que no hay nada que mostrar. `WIFICALCULATE` vuelve al mapa de cobertura. |
 | `WIFIEXPORT` | Exporta a PNG la misma imagen del mapa de calor, con la misma atenuación, junto con los muros, el punto de acceso y la leyenda. |
 | `WIFIPANEL` | Abre el panel acoplable con todo el recorrido (ver [Panel](#panel)). Solo está disponible si se cargó `WifiHeat.AutoCAD.UI.dll`. |
 | `WIFIINFO` | Lista unidades, extensión, capas y entidades del espacio modelo. |
 
-Orden de uso: `WIFISETUP` → `WIFIEJES` (opcional) → `WIFIWALL` → `WIFIVALIDATE` → `WIFIADDAP` → `WIFIAREA` (opcional) → `WIFICALCULATE` → `WIFIQUERY` → `WIFIEXPORT`.
+Orden de uso: `WIFISETUP` → `WIFIEJES` (opcional) → `WIFIWALL` → `WIFIVALIDATE` → `WIFIADDAP` → `WIFIAREA` (opcional) → `WIFICALCULATE` → `WIFIQUERY` → `WIFIEXPORT`. `WIFIARMADURA` (opcional) se usa después de calcular, si hay columnas con armadura.
 
-Cada muro se dibuja como un eje (una línea o polilínea de tramos rectos por muro). El trayecto directo suma una vez la pérdida de cada eje que cruza; en uniones y cruces se cuenta una sola vez la pérdida mayor (ver [docs/modelo.md](docs/modelo.md)).
+Cada muro se dibuja como un eje (una línea o polilínea de tramos rectos por muro). El trayecto directo suma una vez la pérdida de cada eje que cruza; en uniones y cruces se cuenta una sola vez la pérdida mayor. Una columna es un contorno cerrado y suma, una sola vez por trayecto, la pérdida del hormigón más un adicional por su nivel de armadura (ver [docs/modelo.md](docs/modelo.md)).
 
 ## Panel
 
@@ -46,17 +47,17 @@ Cada muro se dibuja como un eje (una línea o polilínea de tramos rectos por mu
 
 | Sección | Qué permite |
 | --- | --- |
-| 1 · Preparar plano | Elegir la unidad del dibujo. Para muros de doble cara: «Elegir zona de la planta…» (marcar con dos clics el rectángulo que encierra una sola planta), ver las capas que contiene con su cantidad de segmentos y de ejes, marcar las que son caras de muro, ajustar el umbral de unión y generar los ejes. |
-| 2 · Plano y validación | Validar y ver la cantidad de muros, errores y avisos. Al elegir un problema se selecciona la entidad en el dibujo y se encuadra la vista. |
-| 3 · Estructuras (muros) | Tabla con handle, capa, longitud, material y espesor; el material y el espesor se editan en la fila. Filtros: todos, sin material y seleccionados. Seleccionar muros o líneas en el dibujo y asignarles material y espesor en bloque (las líneas pasan a `WIFIHEAT_MUROS`). Muestra la pérdida del material elegido en 2,4 y 5 GHz y marca los muros que atraviesa el trayecto hacia el último punto consultado. |
+| 1 · Preparar plano | Elegir la unidad del dibujo. Para muros de doble cara: «Elegir zona de la planta…» (marcar con dos clics el rectángulo que encierra una sola planta), ver las capas que contiene con su cantidad de segmentos y de ejes, marcar las que son caras de muro, ajustar el umbral de unión y generar los ejes. «Elegir líneas…» genera ejes solo entre las líneas que se elijan en el dibujo, sin importar su capa. Si en la zona hay figuras cerradas pequeñas (posibles columnas), lo avisa y ofrece «Marcar como columnas». |
+| 2 · Plano y validación | Validar y ver la cantidad de muros, errores y avisos. Al elegir un problema se selecciona la entidad en el dibujo y se encuadra la vista. Si hay muros paralelos que suman la pérdida dos veces, lo avisa y ofrece «Convertir en ejes». |
+| 3 · Estructuras (muros y columnas) | Tabla con handle, capa, longitud, material y espesor; el material y el espesor se editan en la fila. Filtros: todos, sin material y seleccionados. Seleccionar muros o líneas en el dibujo y asignarles material y espesor en bloque (las líneas pasan a `WIFIHEAT_MUROS`); si la selección trae las dos caras de un muro, ofrece «Unir en ejes» o «Ignorar». Con el tipo Columna, el material queda en hormigón y se elige la armadura, con su ejemplo y su adicional en dB; la selección admite hatches y polilíneas cerradas. Muestra la pérdida del material elegido en 2,4 y 5 GHz y marca los muros que atraviesa el trayecto hacia el último punto consultado. |
 | 4 · Punto de acceso | Posición X/Y (escrita o con un clic en el dibujo), banda con su frecuencia, potencia de transmisión, ganancias de antena, pérdidas de cable y resolución de la grilla. Cada cambio deja el mapa marcado como desactualizado. |
-| 5 · Calcular y mostrar | Área de cobertura (polilínea o rectángulo de los muros), cálculo con resumen (celdas, RSSI mínimo y máximo, tiempo), atenuación del mapa sin recalcular y leyenda de colores. |
+| 5 · Calcular y mostrar | Área de cobertura (polilínea o rectángulo de los muros), cálculo con resumen (celdas, RSSI mínimo y máximo, tiempo), atenuación del mapa sin recalcular y leyenda de colores. El botón «Ver efecto de la armadura» (equivale a `WIFIARMADURA`) reemplaza el mapa por la pérdida que suma la armadura; Calcular vuelve al mapa de cobertura. |
 | 6 · Consultar punto | Cada clic en el dibujo muestra distancia, L_0, muros cruzados con su material y su pérdida, P_RX y clase, con el texto completo de la explicación. Termina con Esc o Enter. |
 | 7 · Exportar PNG | Guarda la imagen del último cálculo y muestra la ruta del archivo. |
 
 Los valores se confirman con Enter o al salir del campo. Si AutoCAD está ejecutando otro comando, el panel lo avisa y no modifica el dibujo hasta que termine.
 
-Mientras el panel espera algo en el dibujo, arriba se ve un aviso fijo con el modo (por ejemplo, «MODO: UBICAR PUNTO DE ACCESO»), la instrucción y el botón «CANCELAR (ESC)». El resultado de cada acción aparece al pie: ✖ error, ⚠ advertencia, ✔ éxito o ℹ información, con un título corto y el detalle. Los errores y advertencias quedan hasta cerrarlos o hasta la acción siguiente. El historial plegable guarda los últimos 50 mensajes y se puede copiar.
+Mientras el panel espera algo en el dibujo, arriba se ve un aviso fijo con el modo (por ejemplo, «MODO: UBICAR PUNTO DE ACCESO»), la instrucción y el botón «CANCELAR (ESC)». El resultado de cada acción aparece al pie: ✖ error, ⚠ advertencia, ✔ éxito o ℹ información, con un título corto y el detalle; cuando hay algo para decidir, el mensaje trae los botones de la acción sugerida. Los errores y advertencias quedan hasta cerrarlos o hasta la acción siguiente. El historial plegable guarda los últimos 50 mensajes y se puede copiar.
 
 ## Probar con el ejemplo
 
@@ -77,6 +78,16 @@ Notas:
 - Con `SECURELOAD` activo, `NETLOAD` exige que la carpeta del plugin esté en `TRUSTEDPATHS`: agregar `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows`. Si AutoCAD bloquea también el script, agregar la carpeta `samples`.
 - `demo.scr` ejecuta además `NETLOAD` con la ruta relativa a `demo.dwg`, así que el paso 2 solo es imprescindible si ese `NETLOAD` es bloqueado.
 - No desactivar `SECURELOAD`.
+
+## Guía de uso
+
+Recorrido paso a paso sobre `samples/demo.dwg`, configuración del punto de acceso, lectura de los colores y problemas frecuentes: [docs/guia-de-uso.md](docs/guia-de-uso.md).
+
+## Ramas
+
+- `main`: versión estable con el panel.
+- `dev/stable`: versión de la entrega, con el doble conteo resuelto, las columnas con armadura y el mapa del efecto de la armadura.
+- `feature/diffraction` y `feature/reflection`: trabajo futuro (difracción y reflexiones).
 
 ## Estructura
 
@@ -106,4 +117,5 @@ Pendiente.
 ## Créditos
 
 Ferrari Osado Bautista, Torres Gauffin Tadeo y Valdecantos Joaquín.
+
 Trabajo Final Integrador de Comunicación de Datos, UTN-FRT.
