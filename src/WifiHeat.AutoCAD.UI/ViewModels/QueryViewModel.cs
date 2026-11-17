@@ -21,6 +21,16 @@ public sealed class CrossingViewModel(WallCrossing crossing)
     public bool HasJunction { get; } = crossing.JunctionWith.Count > 0;
 }
 
+/// <summary>Trayecto sumado en la consulta: descripción, longitud, pérdida y parte de la potencia.</summary>
+public sealed class PathViewModel(PathContribution path)
+{
+    public string Description { get; } = Explanation.DescribePath(path);
+
+    public string DetailText { get; } = $"{NumberText.Format(path.LengthM, "0.00")} m · pérdida {NumberText.Format(path.LossDb, "0.0")} dB";
+
+    public string ShareText { get; } = $"{NumberText.Format(path.PowerShare * 100, "0.0")} %";
+}
+
 /// <summary>Sección "Consultar punto": tarjeta con la explicación del RSSI estimado en el punto elegido.</summary>
 public sealed class QueryViewModel : ObservableObject
 {
@@ -38,6 +48,21 @@ public sealed class QueryViewModel : ObservableObject
     }
 
     public ObservableCollection<CrossingViewModel> Crossings { get; } = [];
+
+    /// <summary>Los trayectos que más aportan, con un modelo que suma varios; vacío con línea recta.</summary>
+    public ObservableCollection<PathViewModel> Paths { get; } = [];
+
+    public bool HasPaths => _result?.Calculation.Paths is not null;
+
+    public string ModelText => _result is { } r ? PropagationModelInfo.Label(r.Calculation.Model) : "";
+
+    public string PathsTitle => _result?.Calculation.Paths is { } paths
+        ? paths.Count > Paths.Count ? $"Trayectos sumados: {paths.Count} (se muestran {Paths.Count})" : $"Trayectos sumados: {paths.Count}"
+        : "";
+
+    public string PathsNote => HasPaths
+        ? "La distancia, L₀ y L materiales son los de la recta AP–punto. El RSSI es la suma en potencia de los trayectos."
+        : "";
 
     public RelayCommand QueryCommand { get; }
 
@@ -157,6 +182,8 @@ public sealed class QueryViewModel : ObservableObject
         Crossings.Clear();
         foreach (WallCrossing crossing in result?.Calculation.Walls ?? []) Crossings.Add(new CrossingViewModel(crossing));
         _owner.Walls.MarkPath(result?.Calculation.Walls);
+        Paths.Clear();
+        foreach (PathContribution path in (result?.Calculation.Paths ?? []).Take(Core.Workflow.Explanation.MaxListedPaths)) Paths.Add(new PathViewModel(path));
 
         OnPropertyChanged(nameof(HasResult));
         OnPropertyChanged(nameof(PointText));
@@ -168,6 +195,10 @@ public sealed class QueryViewModel : ObservableObject
         OnPropertyChanged(nameof(LevelColorHex));
         OnPropertyChanged(nameof(CrossingsTitle));
         OnPropertyChanged(nameof(HasCrossings));
+        OnPropertyChanged(nameof(HasPaths));
+        OnPropertyChanged(nameof(ModelText));
+        OnPropertyChanged(nameof(PathsTitle));
+        OnPropertyChanged(nameof(PathsNote));
         OnPropertyChanged(nameof(Explanation));
     }
 }

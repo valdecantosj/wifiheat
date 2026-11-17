@@ -512,6 +512,12 @@
               </WrapPanel>
 
               <Border Style="{StaticResource Rule}" />
+              <TextBlock Style="{StaticResource FieldLabel}" Text="Modelo de propagación" Margin="0,10,0,2" />
+              <ComboBox HorizontalAlignment="Left" MinWidth="150" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
+                        DisplayMemberPath="Label" AutomationProperties.Name="Modelo de propagación"
+                        ToolTip="Cambiar el modelo deja el mapa desactualizado; hay que volver a calcular." />
+              <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding ModelHelp}" />
+
               <DockPanel Margin="0,10,0,0">
                 <Button DockPanel.Dock="Left" Style="{StaticResource Primary}" MinWidth="96" Content="_Calcular" Command="{Binding CalculateCommand}" />
                 <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding StateText}">
@@ -561,7 +567,10 @@
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
+                <TextBlock Grid.Row="4" Style="{StaticResource FieldLabel}" Text="Modelo" Margin="0,2,10,2" />
+                <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource Value}" Text="{Binding ModelText}" />
                 <TextBlock Style="{StaticResource FieldLabel}" Text="Celdas" Margin="0,2,10,2" />
                 <TextBlock Grid.Column="1" Style="{StaticResource Value}" Text="{Binding CellsText}" />
                 <TextBlock Grid.Row="1" Style="{StaticResource FieldLabel}" Text="RSSI mínimo" Margin="0,2,10,2" />
@@ -678,6 +687,28 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
+
+                  <StackPanel Margin="0,8,0,0" Visibility="{Binding HasPaths, Converter={StaticResource Visible}}">
+                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap">
+                      <Run Text="{Binding PathsTitle, Mode=OneWay}" />
+                      <Run Text=" · " Foreground="{DynamicResource Panel.Muted}" />
+                      <Run Text="{Binding ModelText, Mode=OneWay}" Foreground="{DynamicResource Panel.Muted}" FontWeight="Normal" />
+                    </TextBlock>
+                    <ItemsControl ItemsSource="{Binding Paths}" Focusable="False">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <StackPanel Margin="0,3,0,0">
+                            <DockPanel>
+                              <TextBlock DockPanel.Dock="Right" Text="{Binding ShareText}" FontWeight="SemiBold" Margin="8,0,0,0" />
+                              <TextBlock TextWrapping="Wrap" Text="{Binding Description}" />
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Muted}" Text="{Binding DetailText}" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding PathsNote}" />
+                  </StackPanel>
 
                   <Expander x:Name="FullExplanation" Header="Explicación completa" IsExpanded="False" Margin="0,8,0,0">
                     <TextBox IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" BorderThickness="0" Padding="0" FontSize="11.5"

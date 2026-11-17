@@ -21,7 +21,10 @@ public sealed class LegendEntryViewModel(SignalLevel level)
     public string ColorHex { get; } = $"#{level.R:X2}{level.G:X2}{level.B:X2}";
 }
 
-/// <summary>Sección "Calcular y mostrar": área de cobertura, cálculo, resumen, atenuación del mapa y leyenda.</summary>
+/// <summary>Opción de la lista «Modelo de propagación», con la ayuda que se muestra debajo.</summary>
+public sealed record ModelOption(PropagationModel Model, string Label, string Help);
+
+/// <summary>Sección "Calcular y mostrar": área de cobertura, modelo de propagación, cálculo, resumen, atenuación del mapa y leyenda.</summary>
 public sealed class CalculationViewModel : ObservableObject
 {
     private readonly PanelViewModel _owner;
@@ -35,11 +38,14 @@ public sealed class CalculationViewModel : ObservableObject
     private bool _showingEffect;
     private IReadOnlyList<LegendEntryViewModel> _legend = CoverageLegend;
     private string _legendTitle = CoverageLegendTitle;
+    private ModelOption _selectedModel;
 
     internal CalculationViewModel(PanelViewModel owner)
     {
         _owner = owner;
         _fadePercent = owner.Service.Settings.OverlayFadePercent;
+        Models = [.. owner.Service.PropagationModels.Select(m => new ModelOption(m, PropagationModelInfo.Label(m), PropagationModelInfo.Description(m)))];
+        _selectedModel = OptionFor(owner.Service.Settings.Model);
         CalculateCommand = RelayCommand.Async(CalculateAsync);
         PickAreaCommand = RelayCommand.Async(PickAreaAsync);
         UseRectangleCommand = new RelayCommand(UseRectangle);
@@ -69,6 +75,37 @@ public sealed class CalculationViewModel : ObservableObject
         get => _showingEffect;
         private set => SetField(ref _showingEffect, value);
     }
+
+    /// <summary>Modelos que ofrece el servicio.</summary>
+    public IReadOnlyList<ModelOption> Models { get; }
+
+    /// <summary>Modelo de propagación. Cambiarlo deja el mapa desactualizado; no recalcula.</summary>
+    public ModelOption SelectedModel
+    {
+        get => _selectedModel;
+        set
+        {
+            ModelOption previous = _selectedModel;
+            if (value is null || !SetField(ref _selectedModel, value)) return;
+            OnPropertyChanged(nameof(ModelHelp));
+            if (_loading) return;
+
+            bool done = _owner.Run(() =>
+            {
+                OperationResult<SimulationSettings> result = _owner.Service.Configure(_owner.Service.Settings with { Model = value.Model });
+                _owner.Reload();
+                if (!result.Succeeded) _owner.Report(StatusKind.Error, "No se pudo cambiar el modelo", $"{string.Join(" ", result.Errors)} Se mantiene «{previous.Label}».");
+                else if (IsOutdated) _owner.Report(StatusKind.Warning, "Mapa desactualizado", $"El modelo de propagación cambió a «{value.Label}». Volver a calcular el mapa.");
+                else _owner.Report(StatusKind.Success, $"Modelo de propagación: {value.Label}");
+            });
+            if (!done) ShowModel(previous.Model);
+        }
+    }
+
+    public string ModelHelp => _selectedModel.Help;
+
+    /// <summary>Modelo con que se hizo el último cálculo.</summary>
+    public string ModelText => _summary is { } s ? PropagationModelInfo.Label(s.Model) : "";
 
     public ObservableCollection<string> Problems { get; } = [];
 
@@ -170,7 +207,7 @@ public sealed class CalculationViewModel : ObservableObject
 
     public string FadeText => $"{_fadePercent} %";
 
-    public Task CalculateAsync() => _owner.RunBusyAsync("Calculando el mapa…", () =>
+    public Task CalculateAsync() => _owner.RunBusyAsync(BusyText, () =>
     {
         OperationResult<CalculationSummary> result = _owner.Service.Calculate();
         _owner.Reload();
@@ -182,8 +219,13 @@ public sealed class CalculationViewModel : ObservableObject
         }
 
         CalculationSummary s = result.Value!;
-        _owner.Report(result, "No se pudo calcular el mapa", "Mapa calculado", $"{s.Cells} celdas, RSSI de {NumberText.Format(s.MinDbm, "0.0")} a {NumberText.Format(s.MaxDbm, "0.0")} dBm.");
+        _owner.Report(result, "No se pudo calcular el mapa", "Mapa calculado",
+            $"{s.Cells} celdas, RSSI de {NumberText.Format(s.MinDbm, "0.0")} a {NumberText.Format(s.MaxDbm, "0.0")} dBm. Modelo: {PropagationModelInfo.Label(s.Model)}.");
     });
+
+    private string BusyText => _selectedModel.Model == PropagationModel.StraightLine
+        ? "Calculando el mapa…"
+        : $"Calculando el mapa ({_selectedModel.Label.ToLowerInvariant()})…";
 
     public Task ShowEffectAsync() => _owner.RunBusyAsync("Calculando el efecto de la armadura…", () =>
     {
@@ -241,6 +283,8 @@ public sealed class CalculationViewModel : ObservableObject
         OnPropertyChanged(nameof(MinText));
         OnPropertyChanged(nameof(MaxText));
         OnPropertyChanged(nameof(TimeText));
+        OnPropertyChanged(nameof(ModelText));
+        ShowModel(service.Settings.Model);
 
         Readiness = !_owner.Prepare.HasUnit ? "Falta elegir la unidad del dibujo."
             : !_owner.Walls.HasWalls ? "No hay muros."
@@ -265,6 +309,16 @@ public sealed class CalculationViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(HasProblems));
+    }
+
+    private ModelOption OptionFor(PropagationModel model) => Models.FirstOrDefault(m => m.Model == model) ?? Models[0];
+
+    private void ShowModel(PropagationModel model)
+    {
+        bool loading = _loading;
+        _loading = true;
+        SelectedModel = OptionFor(model);
+        _loading = loading;
     }
 
     private void ShowFade(int percent)
