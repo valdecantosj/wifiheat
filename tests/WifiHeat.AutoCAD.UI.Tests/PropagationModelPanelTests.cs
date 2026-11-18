@@ -192,6 +192,55 @@ public class PropagationModelPanelTests
     }
 
     [Fact]
+    public async Task A_query_with_reflections_shows_the_walls_where_the_signal_bounces()
+    {
+        Sample s = WithColumn();
+        s.Panel.Calculation.SelectedModel = Option(s, PropagationModel.DiffractionAndReflection);
+        s.Interaction.Points.Enqueue(new Vec2(9, 4));
+
+        await s.Panel.Query.QueryAsync();
+
+        QueryViewModel query = s.Panel.Query;
+        Assert.True(query.HasReflectionModel);
+        Assert.True(query.HasReflections);
+        Assert.Equal($"Muros donde rebota: {query.Reflections.Count}", query.ReflectionsTitle);
+        Assert.All(query.Reflections, r => Assert.Contains(r.Handle, new[] { "A1", "A2", "A3", "A4", "C1" }));
+        Assert.Contains(query.Reflections, r => r.Obstacle == "Muro A1" && r.Material == "Ladrillo");
+        Assert.All(query.Reflections, r => Assert.EndsWith(" dB", r.LossText));
+        Assert.All(query.Reflections, r => Assert.Contains("° desde la normal · trayecto ", r.DetailText));
+        Assert.Contains("Muros donde rebota:", query.Explanation);
+
+        query.ShowReflections();
+
+        Assert.Equal(query.Reflections.Select(r => r.Handle).Distinct(), s.Interaction.Shown[^1].Handles);
+        Assert.False(s.Interaction.Shown[^1].Zoom);
+    }
+
+    [Fact]
+    public async Task Without_reflections_the_bounce_list_is_hidden()
+    {
+        Sample s = WithColumn();
+        s.Panel.Calculation.SelectedModel = Option(s, PropagationModel.Diffraction);
+        s.Interaction.Points.Enqueue(new Vec2(9, 4));
+
+        await s.Panel.Query.QueryAsync();
+
+        Assert.False(s.Panel.Query.HasReflectionModel);
+        Assert.Empty(s.Panel.Query.Reflections);
+        Assert.Equal("", s.Panel.Query.ReflectionsTitle);
+
+        s.Panel.Calculation.SelectedModel = Option(s, PropagationModel.DiffractionAndReflection);
+
+        Assert.True(s.Panel.Query.HasReflectionModel);
+        Assert.NotEmpty(s.Panel.Query.Reflections);
+
+        s.Panel.Query.Clear();
+
+        Assert.False(s.Panel.Query.HasReflectionModel);
+        Assert.Empty(s.Panel.Query.Reflections);
+    }
+
+    [Fact]
     public async Task The_query_follows_a_change_of_model()
     {
         Sample s = WithColumn();

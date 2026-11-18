@@ -688,6 +688,33 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
 
+                  <StackPanel Margin="0,8,0,0" Visibility="{Binding HasReflectionModel, Converter={StaticResource Visible}}">
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Ver en el dibujo" Command="{Binding ShowReflectionsCommand}"
+                              Visibility="{Binding HasReflections, Converter={StaticResource Visible}}"
+                              AutomationProperties.Name="Ver en el dibujo los muros donde rebota" />
+                      <TextBlock FontWeight="SemiBold" Text="{Binding ReflectionsTitle}" />
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Reflections}" Focusable="False">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <StackPanel Margin="0,3,0,0">
+                            <DockPanel>
+                              <TextBlock DockPanel.Dock="Right" Text="{Binding LossText}" FontWeight="SemiBold" Margin="8,0,0,0"
+                                         ToolTip="Pérdida del rebote (Fresnel)" />
+                              <TextBlock TextTrimming="CharacterEllipsis">
+                                <Run Text="{Binding Obstacle, Mode=OneWay}" Foreground="{DynamicResource Path.Mark}" FontWeight="SemiBold" />
+                                <Run Text=" · " />
+                                <Run Text="{Binding Material, Mode=OneWay}" />
+                              </TextBlock>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Text="{Binding DetailText}" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+
                   <StackPanel Margin="0,8,0,0" Visibility="{Binding HasPaths, Converter={StaticResource Visible}}">
                     <TextBlock FontWeight="SemiBold" TextWrapping="Wrap">
                       <Run Text="{Binding PathsTitle, Mode=OneWay}" />

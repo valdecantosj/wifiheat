@@ -21,6 +21,22 @@ public sealed class CrossingViewModel(WallCrossing crossing)
     public bool HasJunction { get; } = crossing.JunctionWith.Count > 0;
 }
 
+/// <summary>Rebote de la consulta: muro o columna, material, punto de rebote, ángulo, pérdida y parte de la potencia.</summary>
+public sealed class ReflectionViewModel(PathContribution path)
+{
+    public string Handle { get; } = path.Reflection!.WallId;
+
+    public string Obstacle { get; } = Explanation.ObstacleName(path.Reflection!);
+
+    public string Material { get; } = path.Reflection!.MaterialName;
+
+    public string LossText { get; } = $"{NumberText.Format(path.Reflection!.LossDb, "0.0")} dB";
+
+    public string DetailText { get; } =
+        $"En ({NumberText.Format(path.Vertices[0].X, "0.##")}; {NumberText.Format(path.Vertices[0].Y, "0.##")}) · {NumberText.Format(path.Reflection!.IncidenceDeg, "0")}° desde la normal · " +
+        $"trayecto {NumberText.Format(path.LengthM, "0.00")} m · {NumberText.Format(path.PowerShare * 100, "0.0")} % de la potencia";
+}
+
 /// <summary>Trayecto sumado en la consulta: descripción, longitud, pérdida y parte de la potencia.</summary>
 public sealed class PathViewModel(PathContribution path)
 {
@@ -45,6 +61,29 @@ public sealed class QueryViewModel : ObservableObject
         QueryCommand = RelayCommand.Async(QueryAsync);
         ClearCommand = new RelayCommand(Clear);
         ShowWallsCommand = new RelayCommand(ShowWalls);
+        ShowReflectionsCommand = new RelayCommand(ShowReflections);
+    }
+
+    /// <summary>Muros y columnas donde rebota la señal, con el modelo con reflexiones.</summary>
+    public ObservableCollection<ReflectionViewModel> Reflections { get; } = [];
+
+    /// <summary>La consulta se hizo con el modelo con reflexiones: se muestra la lista de rebotes, aunque esté vacía.</summary>
+    public bool HasReflectionModel => _result?.Calculation.Model == PropagationModel.DiffractionAndReflection;
+
+    public bool HasReflections => Reflections.Count > 0;
+
+    public string ReflectionsTitle => HasReflectionModel
+        ? Reflections.Count == 0 ? "Muros donde rebota: ninguno" : $"Muros donde rebota: {Reflections.Count}"
+        : "";
+
+    public RelayCommand ShowReflectionsCommand { get; }
+
+    public void ShowReflections()
+    {
+        if (Reflections.Count == 0) return;
+
+        string[] handles = [.. Reflections.Select(r => r.Handle).Distinct()];
+        _owner.Run(() => _owner.Interaction.Show(handles, zoom: false));
     }
 
     public ObservableCollection<CrossingViewModel> Crossings { get; } = [];
@@ -184,6 +223,11 @@ public sealed class QueryViewModel : ObservableObject
         _owner.Walls.MarkPath(result?.Calculation.Walls);
         Paths.Clear();
         foreach (PathContribution path in (result?.Calculation.Paths ?? []).Take(Core.Workflow.Explanation.MaxListedPaths)) Paths.Add(new PathViewModel(path));
+        Reflections.Clear();
+        if (result is not null)
+        {
+            foreach (PathContribution path in Core.Workflow.Explanation.Reflections(result.Calculation)) Reflections.Add(new ReflectionViewModel(path));
+        }
 
         OnPropertyChanged(nameof(HasResult));
         OnPropertyChanged(nameof(PointText));
@@ -196,6 +240,9 @@ public sealed class QueryViewModel : ObservableObject
         OnPropertyChanged(nameof(CrossingsTitle));
         OnPropertyChanged(nameof(HasCrossings));
         OnPropertyChanged(nameof(HasPaths));
+        OnPropertyChanged(nameof(HasReflectionModel));
+        OnPropertyChanged(nameof(HasReflections));
+        OnPropertyChanged(nameof(ReflectionsTitle));
         OnPropertyChanged(nameof(ModelText));
         OnPropertyChanged(nameof(PathsTitle));
         OnPropertyChanged(nameof(PathsNote));
