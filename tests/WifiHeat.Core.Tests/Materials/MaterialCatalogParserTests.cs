@@ -1,4 +1,5 @@
 using WifiHeat.Core.Materials;
+using WifiHeat.Core.Propagation;
 using WifiHeat.Core.Simulation;
 using Xunit;
 
@@ -13,6 +14,39 @@ public class MaterialCatalogParserTests
 
         Assert.True(c.TryGet("GLASS", out Material m));
         Assert.Equal(3.5, m.LossDb(Band.Ghz5), 9);
+    }
+
+    [Fact]
+    public void Parses_the_electrical_properties()
+    {
+        MaterialCatalog c = MaterialCatalogParser.Parse(
+            """{"materials":[{"id":"concrete","name":"Hormigón","lossDb":{"2.4GHz":22.8,"5GHz":44.8},"reflection":{"a":5.24,"b":0,"c":0.0462,"d":0.7822,"source":"P.2040"}}]}""");
+
+        Assert.True(c.TryGet("concrete", out Material m));
+        Assert.Equal(new Dielectric(5.24, 0, 0.0462, 0.7822), m.Reflection);
+    }
+
+    [Fact]
+    public void A_material_without_electrical_properties_has_no_reflection()
+    {
+        MaterialCatalog c = MaterialCatalogParser.Parse("""{"materials":[{"id":"glass","name":"Vidrio","lossDb":{"2.4GHz":3,"5GHz":3.5}}]}""");
+
+        Assert.True(c.TryGet("glass", out Material m));
+        Assert.Null(m.Reflection);
+    }
+
+    [Theory]
+    [InlineData("""{"a":0.5,"b":0,"c":0,"d":0}""", "permitividad")]
+    [InlineData("""{"a":4,"b":0,"c":-1,"d":0}""", "conductividad")]
+    [InlineData("""{"a":4,"b":0,"c":0}""", "reflection.d")]
+    [InlineData("""{"a":4,"b":null,"c":0,"d":0}""", "reflection.b")]
+    [InlineData("""[4,0,0,0]""", "debe ser un objeto")]
+    public void Invalid_electrical_properties_are_rejected(string reflection, string message)
+    {
+        var ex = Assert.Throws<MaterialCatalogException>(() => MaterialCatalogParser.Parse(
+            $$"""{"materials":[{"id":"x","name":"X","lossDb":{"2.4GHz":3,"5GHz":4},"reflection":{{reflection}}}]}"""));
+
+        Assert.Contains(ex.Errors, e => e.Contains(message));
     }
 
     [Fact]

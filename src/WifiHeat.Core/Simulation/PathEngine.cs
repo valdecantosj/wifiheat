@@ -9,11 +9,16 @@ namespace WifiHeat.Core.Simulation;
 /// En cada punto suma las potencias (sin fases) del trayecto directo y de las polilíneas AP → v1 → … → vk → punto
 /// que rodean vértices difractantes. La pérdida por difracción usa el filo de cuchilla (<see cref="KnifeEdge"/>),
 /// combina varios vértices con la construcción de Deygout en forma angular y corrige las aristas próximas.
-/// El constructor precalcula los vértices, las llegadas a cada vértice y sus tramos; después la instancia no cambia
-/// y sus consultas se pueden hacer desde varios hilos.
+/// Con reflexiones suma además los trayectos AP → R → punto con un rebote en un muro o cara de columna (método de las
+/// imágenes) y pérdida de Fresnel TE (<see cref="Fresnel"/>).
+/// El constructor precalcula los vértices, las llegadas a cada vértice, sus tramos y las imágenes del AP; después la
+/// instancia no cambia y sus consultas se pueden hacer desde varios hilos.
 /// </summary>
 public sealed class PathEngine
 {
+    /// <summary>Distancia mínima (m) del AP o del punto a la recta de rebote.</summary>
+    public const double MinReflectionDistanceM = 1e-6;
+
     /// <summary>ν mínimo, respecto del tramo, para considerar un vértice de transición.</summary>
     public const double LitPrefilterNu = -3.0;
 
@@ -35,9 +40,23 @@ public sealed class PathEngine
     private readonly Vec2[] _positions;
     private readonly Dictionary<(int From, int To), Leg> _legs = [];
     private readonly Arrival[][][] _arrivals;
+    private readonly PropagationModel _model;
+    private readonly ReflectingSurface[] _surfaces;
+    private readonly Mirror[] _mirrors;
 
     public PathEngine(SimulationScene scene, AccessPoint accessPoint, RadioSettings settings, PropagationOptions? options = null)
+        : this(scene, accessPoint, settings, PropagationModel.Diffraction, options)
     {
+    }
+
+    public PathEngine(SimulationScene scene, AccessPoint accessPoint, RadioSettings settings, PropagationModel model, PropagationOptions? options = null)
+    {
+        if (model is not (PropagationModel.Diffraction or PropagationModel.DiffractionAndReflection))
+        {
+            throw new ArgumentOutOfRangeException(nameof(model), $"El modelo «{PropagationModelInfo.Label(model)}» no usa este motor.");
+        }
+
+        _model = model;
         _options = options ?? PropagationOptions.Default;
         if (!PropagationOptions.IsValidMaxDiffractions(_options.MaxDiffractions))
         {
@@ -59,18 +78,13 @@ public sealed class PathEngine
         _vertices = [.. DiffractingVertices.Find(scene, _band)];
         _positions = [.. _vertices.Select(v => v.Position)];
         _arrivals = BuildArrivals();
+        _surfaces = model == PropagationModel.DiffractionAndReflection ? [.. ReflectingSurfaces.Find(scene)] : [];
+        _mirrors = BuildMirrors();
     }
 
-    /// <summary>Motor para un modelo distinto de línea recta. El modelo con reflexiones todavía no está disponible.</summary>
-    public static PathEngine For(SimulationScene scene, AccessPoint accessPoint, RadioSettings settings, PropagationModel model, PropagationOptions? options = null)
-    {
-        if (model != PropagationModel.Diffraction)
-        {
-            throw new ArgumentOutOfRangeException(nameof(model), $"El modelo «{PropagationModelInfo.Label(model)}» no usa este motor.");
-        }
-
-        return new PathEngine(scene, accessPoint, settings, options);
-    }
+    /// <summary>Motor para un modelo distinto de línea recta.</summary>
+    public static PathEngine For(SimulationScene scene, AccessPoint accessPoint, RadioSettings settings, PropagationModel model, PropagationOptions? options = null) =>
+        new(scene, accessPoint, settings, model, options);
 
     public SimulationScene Scene => _scene;
 
@@ -78,9 +92,12 @@ public sealed class PathEngine
 
     public RadioSettings Settings => _settings;
 
-    public PropagationModel Model => PropagationModel.Diffraction;
+    public PropagationModel Model => _model;
 
     public IReadOnlyList<DiffractingVertex> Vertices => _vertices;
+
+    /// <summary>Superficies donde puede rebotar un trayecto; vacío sin reflexiones.</summary>
+    public IReadOnlyList<ReflectingSurface> Surfaces => _surfaces;
 
     public PropagationOptions Options => _options;
 
@@ -110,9 +127,18 @@ public sealed class PathEngine
         {
             if (path.LossDb > best + _options.PruneDb) continue;
 
+            double share = Math.Pow(10, -path.LossDb / 10) / total;
+            if (path.Surface >= 0)
+            {
+                ReflectingSurface s = _surfaces[path.Surface];
+                double incidence = Math.Acos(Math.Clamp(path.CosIncidence, 0.0, 1.0)) * 180 / Math.PI;
+                result.Add(new PathContribution(PathKind.Reflected, [path.Bounce], path.LengthM, path.LossDb, share,
+                    new PathReflection(s.WallId, s.IsColumn, path.ReflectionDb, incidence)));
+                continue;
+            }
+
             Vec2[] vertices = [.. path.Chain.Select(i => _positions[i])];
-            result.Add(new PathContribution(vertices.Length == 0 ? PathKind.Direct : PathKind.Diffracted, vertices, path.LengthM, path.LossDb,
-                Math.Pow(10, -path.LossDb / 10) / total));
+            result.Add(new PathContribution(vertices.Length == 0 ? PathKind.Direct : PathKind.Diffracted, vertices, path.LengthM, path.LossDb, share));
         }
 
         return [.. result.OrderBy(p => p.LossDb)];
@@ -511,6 +537,27 @@ public sealed class PathEngine
         double best = double.PositiveInfinity;
         for (int n = 0; n < count; n++) best = Math.Min(best, losses[n]);
 
+        for (int s = 0; s < _surfaces.Length; s++)
+        {
+            if (!Reflect(s, rx, out Vec2 bounce, out double length, out double cos)) continue;
+
+            double reflection = Fresnel.ReflectionLossDb(_mirrors[s].Permittivity, cos);
+            double loss = PathLoss.FreeSpaceDbFromMetres(_frequencyMHz, length) + reflection;
+            if (loss > best + _options.PruneDb) continue;
+
+            loss += LegLoss.LossDb(_scene, _band, _ap, bounce, false, true, _positions)
+                  + LegLoss.LossDb(_scene, _band, bounce, rx, true, false, _positions);
+            if (count == losses.Length)
+            {
+                Array.Resize(ref losses, losses.Length * 2);
+                t_losses = losses;
+            }
+
+            losses[count++] = loss;
+            best = Math.Min(best, loss);
+            detail?.Add(new RawPath([], length, loss, s, bounce, cos, reflection));
+        }
+
         double total = 0;
         for (int n = 0; n < count; n++)
         {
@@ -519,6 +566,56 @@ public sealed class PathEngine
 
         return -10 * Math.Log10(total);
     }
+
+    // ---- reflexiones de primer orden: método de las imágenes
+
+    private Mirror[] BuildMirrors()
+    {
+        var mirrors = new Mirror[_surfaces.Length];
+        double frequencyGHz = _frequencyMHz / 1000;
+        for (int s = 0; s < _surfaces.Length; s++)
+        {
+            ReflectingSurface surface = _surfaces[s];
+            mirrors[s] = new Mirror(surface.Mirror(_ap), surface.SignedDistance(_ap), surface.Material.ComplexPermittivity(frequencyGHz));
+        }
+
+        return mirrors;
+    }
+
+    /// <summary>
+    /// Rebote en la superficie s hacia rx. Vale si el AP y rx están del mismo lado de la recta (del lado exterior en una
+    /// columna), a más de <see cref="MinReflectionDistanceM"/> de ella, y si la recta imagen → rx corta el segmento en su interior.
+    /// length = |imagen − rx| = d1 + d2. cos: coseno del ángulo de incidencia, medido desde la normal.
+    /// </summary>
+    private bool Reflect(int s, Vec2 rx, out Vec2 bounce, out double length, out double cos)
+    {
+        bounce = default;
+        length = 0;
+        cos = 0;
+
+        ReflectingSurface surface = _surfaces[s];
+        Mirror mirror = _mirrors[s];
+        double hAp = mirror.ApDistance;
+        double hRx = surface.SignedDistance(rx);
+        if (Math.Abs(hAp) <= MinReflectionDistanceM || Math.Abs(hRx) <= MinReflectionDistanceM) return false;
+        if ((hAp > 0) != (hRx > 0)) return false;
+        if (surface.OutwardOnly && hAp < 0) return false;
+
+        double k = Math.Abs(hAp) / (Math.Abs(hAp) + Math.Abs(hRx));
+        Vec2 toRx = rx - mirror.Image;
+        bounce = mirror.Image + toRx * k;
+
+        Vec2 ab = surface.Segment.B - surface.Segment.A;
+        double t = Vec2.Dot(bounce - surface.Segment.A, ab) / Vec2.Dot(ab, ab);
+        if (!(t > 0 && t < 1)) return false;
+
+        length = toRx.Length;
+        cos = (Math.Abs(hAp) + Math.Abs(hRx)) / length;
+        return true;
+    }
+
+    /// <summary>Imagen del AP respecto de una superficie, su distancia con signo a la recta y la permitividad compleja del material.</summary>
+    private readonly record struct Mirror(Vec2 Image, double ApDistance, System.Numerics.Complex Permittivity);
 
     /// <summary>Tramo entre dos nodos: pérdida por materiales y vértices de transición, en el orden del tramo.</summary>
     private readonly record struct Leg(double MaterialsDb, int[] Lit);
@@ -539,5 +636,7 @@ public sealed class PathEngine
     /// <summary>Arista principal bajo la cual se resuelve una secundaria. Far: extremo lejano de su cuerda. After: la secundaria va después.</summary>
     private readonly record struct Principal(bool Exists, Vec2 Position, double LossDb, double Scale, Vec2 Far, bool After);
 
-    private readonly record struct RawPath(int[] Chain, double LengthM, double LossDb);
+    /// <summary>Surface: índice de la superficie del rebote (−1 si no es reflejado); Bounce, CosIncidence y ReflectionDb solo en el reflejado.</summary>
+    private readonly record struct RawPath(int[] Chain, double LengthM, double LossDb, int Surface = -1, Vec2 Bounce = default,
+        double CosIncidence = 0, double ReflectionDb = 0);
 }

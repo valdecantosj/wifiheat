@@ -1,4 +1,5 @@
 using System.Text.Json;
+using WifiHeat.Core.Propagation;
 using WifiHeat.Core.Simulation;
 
 namespace WifiHeat.Core.Materials;
@@ -6,12 +7,14 @@ namespace WifiHeat.Core.Materials;
 /// <summary>
 /// Lee el catálogo JSON (config/materials.json). Rechaza pérdidas faltantes, null o negativas:
 /// null nunca equivale a 0 dB. La sección «columnReinforcement» es opcional; si falta se usa la convención por defecto.
+/// «reflection» es opcional en cada material: coeficientes a, b, c y d de ITU-R P.2040 (ε′ = a·f^b, σ = c·f^d, f en GHz).
 /// </summary>
 public static class MaterialCatalogParser
 {
     public const string Key2_4 = "2.4GHz";
     public const string Key5 = "5GHz";
     public const string ColumnsKey = "columnReinforcement";
+    public const string ReflectionKey = "reflection";
 
     public static MaterialCatalog Parse(string json)
     {
@@ -45,9 +48,17 @@ public static class MaterialCatalogParser
                 errors.Add($"{where}: falta el objeto 'lossDb'.");
             }
 
-            if (loss24 is double a && loss5 is double b && !string.IsNullOrWhiteSpace(name))
+            Dielectric? reflection = null;
+            bool reflectionOk = true;
+            if (item.TryGetProperty(ReflectionKey, out JsonElement electric))
             {
-                materials.Add(new Material(id, name, a, b));
+                reflection = ReadReflection(electric, where, errors);
+                reflectionOk = reflection is not null;
+            }
+
+            if (loss24 is double a && loss5 is double b && !string.IsNullOrWhiteSpace(name) && reflectionOk)
+            {
+                materials.Add(new Material(id, name, a, b, reflection));
             }
         }
 
@@ -120,6 +131,46 @@ public static class MaterialCatalogParser
         }
 
         return errors.Count > 0 ? null : new ColumnReinforcement(materialId, [.. read.Values.OrderBy(l => l.Level)]);
+    }
+
+    private static Dielectric? ReadReflection(JsonElement section, string where, List<string> errors)
+    {
+        if (section.ValueKind != JsonValueKind.Object)
+        {
+            errors.Add($"{where}: '{ReflectionKey}' debe ser un objeto con 'a', 'b', 'c' y 'd'.");
+            return null;
+        }
+
+        double? a = ReadCoefficient(section, "a", where, errors);
+        double? b = ReadCoefficient(section, "b", where, errors);
+        double? c = ReadCoefficient(section, "c", where, errors);
+        double? d = ReadCoefficient(section, "d", where, errors);
+        if (a is not { } va || b is not { } vb || c is not { } vc || d is not { } vd) return null;
+
+        if (va < 1)
+        {
+            errors.Add($"{where}: '{ReflectionKey}.a' inválido ({va}); la permitividad relativa debe ser >= 1.");
+            return null;
+        }
+
+        if (vc < 0)
+        {
+            errors.Add($"{where}: '{ReflectionKey}.c' inválido ({vc}); la conductividad debe ser >= 0.");
+            return null;
+        }
+
+        return new Dielectric(va, vb, vc, vd);
+    }
+
+    private static double? ReadCoefficient(JsonElement section, string key, string where, List<string> errors)
+    {
+        if (!section.TryGetProperty(key, out JsonElement value) || value.ValueKind != JsonValueKind.Number || !double.IsFinite(value.GetDouble()))
+        {
+            errors.Add($"{where}: falta '{ReflectionKey}.{key}' o no es un número.");
+            return null;
+        }
+
+        return value.GetDouble();
     }
 
     private static string? ReadString(JsonElement item, string property) =>

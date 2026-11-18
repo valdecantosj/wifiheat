@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using WifiHeat.Core.Geometry;
 using WifiHeat.Core.Materials;
 using WifiHeat.Core.Simulation;
 
@@ -64,10 +65,15 @@ public static class Explanation
         }
     }
 
-    /// <summary>«Directo» o «Difractado ×2 en (0; 0) y (0,3; 0)».</summary>
+    /// <summary>«Directo», «Difractado ×2 en (0; 0) y (0,3; 0)» o «Reflejado en muro M1 en (2; 0) · 35° · rebote 6,4 dB».</summary>
     public static string DescribePath(PathContribution path)
     {
         if (path.Kind == PathKind.Direct) return "Directo";
+        if (path.Kind == PathKind.Reflected && path.Reflection is { } r && path.Vertices.Count > 0)
+        {
+            Vec2 at = path.Vertices[0];
+            return F($"Reflejado en {(r.IsColumn ? "columna" : "muro")} {r.WallId} en ({at.X:0.##}; {at.Y:0.##}) · {r.IncidenceDeg:0}° · rebote {r.LossDb:0.0} dB");
+        }
 
         string vertices = string.Join(" y ", path.Vertices.Select(v => F($"({v.X:0.##}; {v.Y:0.##})")));
         return F($"Difractado ×{path.Diffractions} en {vertices}");

@@ -154,7 +154,18 @@ public sealed class SimulationSession(MaterialCatalog catalog)
         LastGrid = Model == PropagationModel.StraightLine
             ? GridCalculator.Calculate(_scene, AccessPoint, Settings, plan.Spec, plan.Area)
             : GridCalculator.Calculate(Engine(_scene, AccessPoint), plan.Spec, plan.Area);
-        return OperationResult<RssiGrid>.Ok(LastGrid, plan.Warnings);
+        return OperationResult<RssiGrid>.Ok(LastGrid, [.. plan.Warnings, .. ReflectionWarnings(_scene)]);
+    }
+
+    /// <summary>Con reflexiones, aviso de los materiales del plano que no reflejan por no tener propiedades eléctricas.</summary>
+    private IReadOnlyList<string> ReflectionWarnings(SimulationScene scene)
+    {
+        if (Model != PropagationModel.DiffractionAndReflection) return [];
+
+        IReadOnlyList<string> missing = ReflectingSurfaces.NonReflectingMaterials(scene);
+        return missing.Count == 0
+            ? []
+            : [$"Sin rebote en {string.Join(", ", missing)}: el catálogo no tiene sus propiedades eléctricas ('reflection')."];
     }
 
     /// <summary>

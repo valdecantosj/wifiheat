@@ -22,13 +22,13 @@ public class PropagationModelServiceTests
     }
 
     [Fact]
-    public void Straight_line_is_the_default_and_two_models_are_offered()
+    public void Straight_line_is_the_default_and_three_models_are_offered()
     {
         FakeDrawing d = Room();
 
         Assert.Equal(PropagationModel.StraightLine, d.Settings.Model);
         Assert.Equal(3, d.Settings.MaxDiffractions);
-        Assert.Equal([PropagationModel.StraightLine, PropagationModel.Diffraction], d.PropagationModels);
+        Assert.Equal([PropagationModel.StraightLine, PropagationModel.Diffraction, PropagationModel.DiffractionAndReflection], d.PropagationModels);
     }
 
     [Fact]
@@ -59,16 +59,34 @@ public class PropagationModelServiceTests
     }
 
     [Fact]
-    public void The_model_with_reflections_is_rejected_and_nothing_changes()
+    public void The_model_with_reflections_calculates_without_warnings_when_every_material_reflects()
     {
         FakeDrawing d = Room();
-        SimulationSettings before = d.Settings;
 
-        OperationResult<SimulationSettings> result = d.Configure(before with { Model = PropagationModel.DiffractionAndReflection, TxPowerDbm = 10 });
+        OperationResult<SimulationSettings> configured = d.Configure(d.Settings with { Model = PropagationModel.DiffractionAndReflection });
+        var calculated = d.Calculate();
 
-        Assert.False(result.Succeeded);
-        Assert.Contains(result.Errors, e => e.Contains("todavía no está disponible"));
-        Assert.Equal(before, d.Settings);
+        Assert.True(configured.Succeeded);
+        Assert.Equal(PropagationModel.DiffractionAndReflection, d.Session.Model);
+        Assert.True(calculated.Succeeded);
+        Assert.DoesNotContain(calculated.Warnings, w => w.Contains("Sin rebote"));
+    }
+
+    [Fact]
+    public void The_model_with_reflections_warns_about_materials_without_electrical_properties()
+    {
+        var d = new FakeDrawing();
+        d.Add("W1", 0, 0, 10, 0, "brick", 0.15);
+        d.Add("W2", 10, 0, 10, 8, "gypsum", 0.15);
+        d.Add("W3", 10, 8, 0, 8, "brick", 0.15);
+        d.Add("W4", 0, 8, 0, 0, "brick", 0.15);
+        d.SetAccessPoint(new Vec2(1, 4));
+
+        Assert.True(d.Configure(d.Settings with { Model = PropagationModel.DiffractionAndReflection }).Succeeded);
+        var calculated = d.Calculate();
+
+        Assert.True(calculated.Succeeded);
+        Assert.Contains(calculated.Warnings, w => w.Contains("Sin rebote en Ladrillo, Yeso"));
     }
 
     [Theory]

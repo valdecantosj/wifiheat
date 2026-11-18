@@ -95,18 +95,19 @@ public class PropagationModelSessionTests
     }
 
     [Fact]
-    public void The_model_with_reflections_is_not_offered_yet()
+    public void The_model_with_reflections_is_offered_and_calculates()
     {
         SimulationSession session = SessionOf();
         Assert.True(session.Calculate().Succeeded);
 
         OperationResult<PropagationModel> result = session.SetModel(PropagationModel.DiffractionAndReflection);
+        OperationResult<RssiGrid> grid = session.Calculate();
 
-        Assert.False(result.Succeeded);
-        Assert.Contains("todavía no está disponible", result.Errors[0]);
-        Assert.Equal(PropagationModel.StraightLine, session.Model);
-        Assert.NotNull(session.LastGrid);
-        Assert.Equal([PropagationModel.StraightLine, PropagationModel.Diffraction], PropagationModelInfo.Available);
+        Assert.True(result.Succeeded);
+        Assert.Equal(PropagationModel.DiffractionAndReflection, session.Model);
+        Assert.True(grid.Succeeded);
+        Assert.Empty(grid.Warnings);
+        Assert.Equal([PropagationModel.StraightLine, PropagationModel.Diffraction, PropagationModel.DiffractionAndReflection], PropagationModelInfo.Available);
     }
 
     [Fact]
@@ -275,13 +276,28 @@ public class PropagationModelSessionTests
     }
 
     [Fact]
-    public void The_engine_does_not_take_the_model_with_reflections()
+    public void The_grid_with_reflections_is_never_below_the_one_with_diffraction()
     {
         ReferenceScene reference = ReferenceData.Scene("mixta");
         GridSpec spec = GridSpec.Cover(Area.Bounds, 0.5);
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => GridCalculator.Calculate(
-            reference.Scene(), reference.AccessPoint, reference.Settings, spec, Area, PropagationModel.DiffractionAndReflection));
+        RssiGrid diffraction = GridCalculator.Calculate(reference.Scene(), reference.AccessPoint, reference.Settings, spec, Area, PropagationModel.Diffraction);
+        RssiGrid reflection = GridCalculator.Calculate(reference.Scene(), reference.AccessPoint, reference.Settings, spec, Area, PropagationModel.DiffractionAndReflection);
+
+        bool anyHigher = false;
+        for (int column = 0; column < spec.Columns; column++)
+        {
+            for (int row = 0; row < spec.Rows; row++)
+            {
+                double withDiffraction = diffraction[column, row];
+                if (double.IsNaN(withDiffraction)) continue;
+
+                Assert.True(reflection[column, row] >= withDiffraction - 0.01);
+                anyHigher |= reflection[column, row] > withDiffraction + 0.5;
+            }
+        }
+
+        Assert.True(anyHigher);
     }
 
     [Fact]

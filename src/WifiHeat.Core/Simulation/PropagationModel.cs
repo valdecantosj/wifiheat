@@ -9,7 +9,7 @@ public enum PropagationModel
     /// <summary>Suma en potencia del trayecto directo y de los que rodean vértices por difracción.</summary>
     Diffraction,
 
-    /// <summary>Además, reflexiones de primer orden.</summary>
+    /// <summary>Además, un rebote en cada muro o cara de columna (método de las imágenes, Fresnel con ITU-R P.2040).</summary>
     DiffractionAndReflection,
 }
 
@@ -32,7 +32,8 @@ public sealed record PropagationOptions(int MaxDiffractions = 3, double PruneDb 
 public static class PropagationModelInfo
 {
     /// <summary>Modelos que se pueden elegir.</summary>
-    public static IReadOnlyList<PropagationModel> Available { get; } = [PropagationModel.StraightLine, PropagationModel.Diffraction];
+    public static IReadOnlyList<PropagationModel> Available { get; } =
+        [PropagationModel.StraightLine, PropagationModel.Diffraction, PropagationModel.DiffractionAndReflection];
 
     public static bool IsAvailable(PropagationModel model) => Available.Contains(model);
 
@@ -41,7 +42,7 @@ public static class PropagationModelInfo
     {
         PropagationModel.StraightLine => "Recta del AP a cada punto: espacio libre más los muros y columnas que cruza.",
         PropagationModel.Diffraction => "Suma la señal que rodea extremos de muro, esquinas y columnas. Tarda más en calcular.",
-        PropagationModel.DiffractionAndReflection => "Además suma un rebote en cada muro.",
+        PropagationModel.DiffractionAndReflection => "Además suma un rebote en cada muro y columna (Fresnel, ITU-R P.2040). Es el más lento.",
         _ => throw new ArgumentOutOfRangeException(nameof(model)),
     };
 

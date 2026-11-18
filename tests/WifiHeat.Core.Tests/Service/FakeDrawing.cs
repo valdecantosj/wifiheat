@@ -17,7 +17,11 @@ internal sealed class FakeDrawing(MaterialCatalog? catalog = null) : WifiHeatSer
     public static MaterialCatalog DefaultCatalog { get; } = new([new Material("brick", "Ladrillo", 8, 12), new Material("gypsum", "Yeso", 3, 4)]);
 
     public static MaterialCatalog CatalogWithConcrete { get; } = new(
-        [new Material("brick", "Ladrillo", 8, 12), new Material("gypsum", "Yeso", 3, 4), new Material("concrete", "Hormigón", 20, 40)]);
+    [
+        new Material("brick", "Ladrillo", 8, 12, new Dielectric(3.91, 0, 0.0238, 0.16)),
+        new Material("gypsum", "Yeso", 3, 4),
+        new Material("concrete", "Hormigón", 20, 40, new Dielectric(5.24, 0, 0.0462, 0.7822)),
+    ]);
 
     public DrawingUnit? Unit { get; set; } = DrawingUnit.Metres;
     public Dictionary<string, Wall> Walls { get; } = new(StringComparer.OrdinalIgnoreCase);
