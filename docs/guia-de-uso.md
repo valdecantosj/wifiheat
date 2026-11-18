@@ -146,7 +146,7 @@ El ejemplo `samples/demo.dwg` no tiene aberturas ni extremos libres de muro: sin
 
 ### 11. Consultar puntos
 
-En «6 · Consultar punto», pulsar «Consultar punto…» y hacer clic en el plano. La tarjeta muestra el punto, la distancia al AP, $L_0$, la pérdida de los materiales y $P_{RX}$, y «Explicación completa» detalla cada muro cruzado. Cada clic actualiza la tarjeta; Esc o Enter terminan. Los muros que cruza el trayecto se marcan en la tabla de la sección 3.
+En «6 · Consultar punto», pulsar «Consultar punto…» y hacer clic en el plano. La tarjeta muestra el punto, la distancia al AP, $L_0$, la pérdida de los materiales y $P_{RX}$, y «Explicación completa» detalla cada muro cruzado. Cada clic actualiza la tarjeta; Esc o Enter terminan. Los muros que cruza el trayecto se marcan en la tabla de la sección 3. Con el modelo «Con difracción y reflexiones», la tarjeta suma «Muros donde rebota»: cada muro o columna donde rebota la señal, con su material, el punto de rebote, el ángulo y la pérdida del rebote; «Ver en el dibujo» los resalta.
 
 En el ejemplo, con 20 dBm en 5 GHz y sin ganancias ni cables:
 
