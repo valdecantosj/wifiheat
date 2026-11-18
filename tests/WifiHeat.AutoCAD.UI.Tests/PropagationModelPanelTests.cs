@@ -20,11 +20,11 @@ public class PropagationModelPanelTests
     private static ModelOption Option(Sample s, PropagationModel model) => s.Panel.Calculation.Models.Single(m => m.Model == model);
 
     [Fact]
-    public void The_list_offers_straight_line_and_diffraction()
+    public void The_list_offers_straight_line_diffraction_and_reflections()
     {
         CalculationViewModel calc = Sample.Empty().Panel.Calculation;
 
-        Assert.Equal(["Línea recta", "Con difracción"], calc.Models.Select(m => m.Label));
+        Assert.Equal(["Línea recta", "Con difracción", "Con difracción y reflexiones"], calc.Models.Select(m => m.Label));
         Assert.Equal(PropagationModel.StraightLine, calc.SelectedModel.Model);
         Assert.Contains("Recta del AP", calc.ModelHelp);
     }
@@ -173,6 +173,22 @@ public class PropagationModelPanelTests
         Assert.Contains("Modelo: Con difracción", query.Explanation);
         Assert.Contains("Trayectos sumados:", query.Explanation);
         Assert.Single(query.Crossings);
+    }
+
+    [Fact]
+    public async Task A_query_with_reflections_lists_the_bounces()
+    {
+        Sample s = WithColumn();
+        s.Panel.Calculation.SelectedModel = Option(s, PropagationModel.DiffractionAndReflection);
+        s.Interaction.Points.Enqueue(new Vec2(9, 4));
+
+        await s.Panel.Query.QueryAsync();
+
+        QueryViewModel query = s.Panel.Query;
+        Assert.True(query.HasPaths);
+        Assert.Equal("Con difracción y reflexiones", query.ModelText);
+        Assert.Contains("Reflejado en muro ", query.Explanation);
+        Assert.Contains(query.Paths, p => p.Description.StartsWith("Reflejado en muro "));
     }
 
     [Fact]
