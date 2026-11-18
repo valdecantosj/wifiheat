@@ -130,16 +130,17 @@ En «5 · Calcular y mostrar»:
 
 ### Elegir el modelo de propagación
 
-En «5 · Calcular y mostrar», la lista «Modelo de propagación» tiene dos opciones:
+En «5 · Calcular y mostrar», la lista «Modelo de propagación» tiene tres opciones:
 
 | Modelo | Cuándo usarlo |
 | --- | --- |
 | Línea recta (por defecto) | Cálculo inmediato. Cada muro o columna que cruza la recta entre el AP y el punto resta su pérdida completa, así que las sombras son abruptas. |
 | Con difracción | Cuando hay columnas, aberturas o muros con extremos libres. Suma la señal que rodea esos obstáculos: la sombra detrás de una columna se aclara y se difumina. Tarda más. |
+| Con difracción y reflexiones | Para ver además la señal que llega rebotando en las paredes, por ejemplo en pasillos o detrás de una esquina. Suma un rebote por muro o cara de columna. Es el más lento. |
 
-Al cambiar la opción, el mapa queda marcado como desactualizado y hay que pulsar «Calcular» otra vez. El resumen del cálculo y la leyenda dicen con qué modelo se hizo el mapa. Con comandos, es la opción `Modelo` de `WIFICALCULATE`: `Recta` o `Difracción`; la segunda pide además las difracciones máximas por trayecto (Enter deja 3).
+Al cambiar la opción, el mapa queda marcado como desactualizado y hay que pulsar «Calcular» otra vez. El resumen del cálculo y la leyenda dicen con qué modelo se hizo el mapa. Con comandos, es la opción `Modelo` de `WIFICALCULATE`: `Recta`, `Difracción` o `Reflexiones`; las dos últimas piden además las difracciones máximas por trayecto (Enter deja 3).
 
-El ejemplo `samples/demo.dwg` no tiene aberturas ni extremos libres de muro: sin la columna del paso 8, los dos modelos dan el mismo mapa. Con una columna de 30 × 30 cm de armadura media en (6; 4), el punto (9,47; 5,07), que queda detrás, pasa de −94,32 dBm con línea recta a −54,03 dBm con difracción.
+El ejemplo `samples/demo.dwg` no tiene aberturas ni extremos libres de muro: sin la columna del paso 8, la línea recta y la difracción dan el mismo mapa (el modelo con reflexiones sí cambia, porque suma los rebotes en las paredes). Con una columna de 30 × 30 cm de armadura media en (6; 4), el punto (9,47; 5,07), que queda detrás, pasa de −94,32 dBm con línea recta a −54,03 dBm con difracción.
 
 ![Lista «Modelo de propagación» y mapa calculado con difracción](img/18-modelo-difraccion.png)
 
@@ -222,7 +223,7 @@ Qué mirar en el mapa:
 - **Sombras detrás de muros.** Cada muro cruzado por el trayecto directo resta su pérdida completa; las sombras se ven como saltos de color al otro lado.
 - **Distancia.** Aun sin muros el color baja con la distancia: la pérdida en el espacio libre crece 6 dB cada vez que la distancia se duplica.
 - **Bordes difuminados.** Cerca de los muros hay una banda de unos 0,5 m donde se mezclan los dos lados, y los bordes diagonales de las sombras se ven escalonados según la resolución.
-- **Qué no incluye.** El modelo de línea recta usa solo el trayecto directo: no calcula reflexiones ni difracción, así que una sombra real suele ser menos profunda que la del mapa. El modelo con difracción agrega la señal que rodea los obstáculos, pero tampoco calcula reflexiones (ver [limitaciones](modelo.md#limitaciones)).
+- **Qué no incluye.** El modelo de línea recta usa solo el trayecto directo: no calcula reflexiones ni difracción, así que una sombra real suele ser menos profunda que la del mapa. El modelo con difracción agrega la señal que rodea los obstáculos, y el de reflexiones, un rebote en cada muro; ninguno calcula rebotes en techo y piso ni varios rebotes sucesivos (ver [limitaciones](modelo.md#limitaciones)).
 
 La escala de dBm es independiente de la del efecto de la armadura, que va de amarillo claro a rojo oscuro pero mide dB de pérdida agregada: no confundir los dos mapas, cada uno tiene su leyenda.
 

@@ -1,6 +1,6 @@
 # WifiHeat
 
-Plugin de AutoCAD que estima la cobertura Wi-Fi de un plano 2D. Calcula el RSSI de cada punto a partir de la posición del punto de acceso, la pérdida en el espacio libre y la atenuación de los muros que cruza el trayecto directo. Un segundo modelo, opcional, suma además la señal que rodea los obstáculos por difracción.
+Plugin de AutoCAD que estima la cobertura Wi-Fi de un plano 2D. Calcula el RSSI de cada punto a partir de la posición del punto de acceso, la pérdida en el espacio libre y la atenuación de los muros que cruza el trayecto directo. Dos modelos opcionales suman además la señal que rodea los obstáculos por difracción; el segundo agrega también un rebote en cada muro y columna.
 
 ## Requisitos
 
@@ -30,8 +30,8 @@ Para usar además el panel, cargar con `NETLOAD` las dos DLL de `src\WifiHeat.Au
 | `WIFIVALIDATE` | Lee los muros y las columnas y lista errores y avisos con el handle de cada entidad (por ejemplo, `FALTA PROPIEDAD`). Avisa `DOBLE CONTEO` cuando dos muros son paralelos y están a menos de 0,50 m (las dos caras de un mismo muro, que sumarían dos veces) y ofrece convertirlos en un eje; las caras pasan a la capa `WIFIHEAT_CARAS`, que no se lee como muro. |
 | `WIFIADDAP` | Ubica el punto de acceso y pide banda (2,4 o 5 GHz) y potencia de transmisión. |
 | `WIFIAREA` | Opcional. Define el área de cobertura con una polilínea cerrada de tramos rectos; la opción `Rectángulo` vuelve al valor por defecto, el rectángulo que encierra los muros. Fuera del área no se calcula ni se pinta. |
-| `WIFICALCULATE` | Calcula la grilla y dibuja el mapa de calor y la leyenda. Opciones: `Resolución` (tamaño de celda, 0,50 m por defecto, entre 0,10 y 5 m), `Atenuación` (0 a 90 %, 40 % por defecto, que se aplica también al mapa ya dibujado) y `Modelo` (`Recta`, el valor por defecto, o `Difracción`, que además pide las difracciones máximas por trayecto, de 1 a 4, con 3 por defecto); los valores se mantienen mientras el dibujo esté abierto. Enter calcula con los valores vigentes. El resultado y la leyenda nombran el modelo usado. El mapa es una imagen PNG con degradé continuo, opaca dentro del área y transparente fuera (`<dibujo>_wifiheat_NNN.png`, un archivo nuevo por cálculo junto al DWG, o en la carpeta temporal si el dibujo no está guardado; se borran los anteriores). Se inserta en `WIFIHEAT_OVERLAY` debajo del resto del dibujo y se atenúa con la propiedad Atenuación (Fade) de la imagen. |
-| `WIFIQUERY` | Explica el RSSI estimado en un punto: distancia, muros y columnas cruzados, pérdidas y potencia recibida. Con el modelo con difracción agrega la cantidad de trayectos sumados y los cinco que más aportan, con su longitud, su pérdida y su parte de la potencia. Si el punto o el AP están dentro de una columna, lo avisa en lugar de calcular. |
+| `WIFICALCULATE` | Calcula la grilla y dibuja el mapa de calor y la leyenda. Opciones: `Resolución` (tamaño de celda, 0,50 m por defecto, entre 0,10 y 5 m), `Atenuación` (0 a 90 %, 40 % por defecto, que se aplica también al mapa ya dibujado) y `Modelo` (`Recta`, el valor por defecto, `Difracción` o `Reflexiones`; los dos últimos piden además las difracciones máximas por trayecto, de 1 a 4, con 3 por defecto); los valores se mantienen mientras el dibujo esté abierto. Enter calcula con los valores vigentes. El resultado y la leyenda nombran el modelo usado. El mapa es una imagen PNG con degradé continuo, opaca dentro del área y transparente fuera (`<dibujo>_wifiheat_NNN.png`, un archivo nuevo por cálculo junto al DWG, o en la carpeta temporal si el dibujo no está guardado; se borran los anteriores). Se inserta en `WIFIHEAT_OVERLAY` debajo del resto del dibujo y se atenúa con la propiedad Atenuación (Fade) de la imagen. |
+| `WIFIQUERY` | Explica el RSSI estimado en un punto: distancia, muros y columnas cruzados, pérdidas y potencia recibida. Con los modelos con difracción o reflexiones agrega la cantidad de trayectos sumados y los cinco que más aportan, con su longitud, su pérdida y su parte de la potencia; un trayecto reflejado indica el muro, el punto de rebote, el ángulo de incidencia y la pérdida del rebote. Si el punto o el AP están dentro de una columna, lo avisa en lugar de calcular. |
 | `WIFIARMADURA` | Reemplaza el mapa por la pérdida en dB que suma la armadura de las columnas: la diferencia entre el cálculo normal y el mismo cálculo con las columnas como hormigón sin armadura. Solo se pinta el trayecto que cruza alguna columna (7,5 dB por cruce con armadura alta); el resto queda transparente. No es un nivel de señal. Usa una resolución de 0,20 m como máximo (si la de la sesión era mayor, lo avisa y la sesión no cambia), con su propia leyenda y una imagen `<dibujo>_wifiarmadura_NNN.png`. Informa el efecto máximo, las celdas afectadas y la resolución usada; sin columnas con armadura avisa que no hay nada que mostrar. Con el modelo con difracción la diferencia sale de dos cálculos completos y es mucho menor, porque detrás de la columna domina la señal que la rodea. `WIFICALCULATE` vuelve al mapa de cobertura. |
 | `WIFIEXPORT` | Exporta a PNG la misma imagen del mapa de calor, con la misma atenuación, junto con los muros, el punto de acceso y la leyenda. |
 | `WIFIPANEL` | Abre el panel acoplable con todo el recorrido (ver [Panel](#panel)). Solo está disponible si se cargó `WifiHeat.AutoCAD.UI.dll`. |
@@ -47,8 +47,9 @@ Modelos de propagación:
 | --- | --- |
 | Línea recta (por defecto) | El trayecto directo: espacio libre más los muros y columnas que cruza. |
 | Con difracción | Suma además los trayectos que rodean extremos libres de muro, esquinas y vértices de columna, con la difracción por filo de cuchilla de ITU-R P.526. Detrás de una columna o de una abertura la sombra deja de ser abrupta. Tarda más en calcular. |
+| Con difracción y reflexiones | Suma además un rebote en cada muro y cara de columna: el punto de rebote sale del método de las imágenes y la pérdida, del coeficiente de Fresnel con las propiedades eléctricas de ITU-R P.2040 (clave `reflection` de cada material). Es el más lento. |
 
-El modelo se elige en `WIFICALCULATE` (opción `Modelo`) o en el panel, y vale para el mapa, la consulta y el efecto de la armadura. Las fórmulas, lo que está publicado y lo que es convención del proyecto están en [docs/modelo.md](docs/modelo.md#modelo-con-difracción).
+El modelo se elige en `WIFICALCULATE` (opción `Modelo`) o en el panel, y vale para el mapa, la consulta y el efecto de la armadura. Las fórmulas, lo que está publicado y lo que es convención del proyecto están en [docs/modelo.md](docs/modelo.md#modelo-con-difracción) y [docs/modelo.md](docs/modelo.md#modelo-con-reflexiones).
 
 ## Panel
 
@@ -60,8 +61,8 @@ El modelo se elige en `WIFICALCULATE` (opción `Modelo`) o en el panel, y vale p
 | 2 · Plano y validación | Validar y ver la cantidad de muros, errores y avisos. Al elegir un problema se selecciona la entidad en el dibujo y se encuadra la vista. Si hay muros paralelos que suman la pérdida dos veces, lo avisa y ofrece «Convertir en ejes». |
 | 3 · Estructuras (muros y columnas) | Tabla con handle, capa, longitud, material y espesor; el material y el espesor se editan en la fila. Filtros: todos, sin material y seleccionados. Seleccionar muros o líneas en el dibujo y asignarles material y espesor en bloque (las líneas pasan a `WIFIHEAT_MUROS`); si la selección trae las dos caras de un muro, ofrece «Unir en ejes» o «Ignorar». Con el tipo Columna, el material queda en hormigón y se elige la armadura, con su ejemplo y su adicional en dB; la selección admite hatches y polilíneas cerradas. Muestra la pérdida del material elegido en 2,4 y 5 GHz y marca los muros que atraviesa el trayecto hacia el último punto consultado. |
 | 4 · Punto de acceso | Posición X/Y (escrita o con un clic en el dibujo), banda con su frecuencia, potencia de transmisión, ganancias de antena, pérdidas de cable y resolución de la grilla. Cada cambio deja el mapa marcado como desactualizado. |
-| 5 · Calcular y mostrar | Área de cobertura (polilínea o rectángulo de los muros), lista «Modelo de propagación» («Línea recta» o «Con difracción», con una línea de ayuda; cambiarla deja el mapa desactualizado), cálculo con resumen (celdas, RSSI mínimo y máximo, tiempo y modelo), atenuación del mapa sin recalcular y leyenda de colores. El botón «Ver efecto de la armadura» (equivale a `WIFIARMADURA`) reemplaza el mapa por la pérdida que suma la armadura; Calcular vuelve al mapa de cobertura. |
-| 6 · Consultar punto | Cada clic en el dibujo muestra distancia, L_0, muros cruzados con su material y su pérdida, P_RX y clase, con el texto completo de la explicación. Con el modelo con difracción lista además los trayectos sumados, con su longitud, su pérdida y su parte de la potencia. Termina con Esc o Enter. |
+| 5 · Calcular y mostrar | Área de cobertura (polilínea o rectángulo de los muros), lista «Modelo de propagación» («Línea recta», «Con difracción» o «Con difracción y reflexiones», con una línea de ayuda; cambiarla deja el mapa desactualizado), cálculo con resumen (celdas, RSSI mínimo y máximo, tiempo y modelo), atenuación del mapa sin recalcular y leyenda de colores. El botón «Ver efecto de la armadura» (equivale a `WIFIARMADURA`) reemplaza el mapa por la pérdida que suma la armadura; Calcular vuelve al mapa de cobertura. |
+| 6 · Consultar punto | Cada clic en el dibujo muestra distancia, L_0, muros cruzados con su material y su pérdida, P_RX y clase, con el texto completo de la explicación. Con los modelos con difracción o reflexiones lista además los trayectos sumados, con su longitud, su pérdida y su parte de la potencia. Termina con Esc o Enter. |
 | 7 · Exportar PNG | Guarda la imagen del último cálculo y muestra la ruta del archivo. |
 
 Los valores se confirman con Enter o al salir del campo. Si AutoCAD está ejecutando otro comando, el panel lo avisa y no modifica el dibujo hasta que termine.
@@ -87,7 +88,7 @@ Notas:
 - Con `SECURELOAD` activo, `NETLOAD` exige que la carpeta del plugin esté en `TRUSTEDPATHS`: agregar `src\WifiHeat.AutoCAD\bin\Debug\net10.0-windows`. Si AutoCAD bloquea también el script, agregar la carpeta `samples`.
 - `demo.scr` ejecuta además `NETLOAD` con la ruta relativa a `demo.dwg`, así que el paso 2 solo es imprescindible si ese `NETLOAD` es bloqueado.
 - No desactivar `SECURELOAD`.
-- En el ejemplo los ambientes están cerrados (no hay aberturas ni extremos libres de muro), así que los dos modelos dan el mismo mapa. Para ver la diferencia, agregar una columna (`WIFIWALL` con material `columna`) o un muro con un extremo libre, y calcular con cada modelo.
+- En el ejemplo los ambientes están cerrados (no hay aberturas ni extremos libres de muro), así que la línea recta y la difracción dan el mismo mapa; el modelo con reflexiones sí cambia, porque suma los rebotes en las paredes. Para ver el efecto de la difracción, agregar una columna (`WIFIWALL` con material `columna`) o un muro con un extremo libre, y calcular con cada modelo.
 
 ## Guía de uso
 
@@ -98,7 +99,7 @@ Recorrido paso a paso sobre `samples/demo.dwg`, configuración del punto de acce
 - `main`: versión estable con el panel.
 - `dev/stable`: versión de la entrega, con el doble conteo resuelto, las columnas con armadura y el mapa del efecto de la armadura.
 - `feature/diffraction`: agrega el modelo con difracción, elegible junto al de línea recta.
-- `feature/reflection`: trabajo futuro (reflexiones de primer orden).
+- `feature/reflection`: agrega el modelo con difracción y reflexiones (un rebote por trayecto).
 
 ## Estructura
 

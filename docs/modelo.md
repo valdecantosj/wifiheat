@@ -1,13 +1,14 @@
 # Modelo de propagación
 
-Hay dos modelos, que se eligen al calcular:
+Hay tres modelos, que se eligen al calcular:
 
 | Modelo | Qué considera |
 | --- | --- |
 | Línea recta (por defecto) | El trayecto directo entre el punto de acceso (AP) y el punto: espacio libre más los muros y columnas que cruza. |
 | Con difracción | Además, los trayectos que rodean extremos de muro, esquinas y columnas. Se suman las potencias de todos los trayectos. |
+| Con difracción y reflexiones | Además, un rebote en cada muro y cara de columna, con la pérdida de reflexión de Fresnel. |
 
-Las secciones que siguen describen el modelo de línea recta, que también es la base del otro. Lo que agrega el segundo está en [Modelo con difracción](#modelo-con-difracción).
+Las secciones que siguen describen el modelo de línea recta, que también es la base de los otros. Lo que agregan está en [Modelo con difracción](#modelo-con-difracción) y [Modelo con reflexiones](#modelo-con-reflexiones).
 
 ## Pérdida en el espacio libre
 
@@ -227,6 +228,86 @@ Valores que da el modelo a 5 GHz con 20 dBm, sin ganancias ni cables. No son med
 
 En el primer caso la columna cuesta 49,8 dB si se la atraviesa y 11,5 dB si se la rodea.
 
+## Modelo con reflexiones
+
+Además de los trayectos del modelo con difracción, suma los que llegan al punto con un rebote en un muro o en una cara de columna (reflexión de primer orden). Es un modelo 2D, en planta.
+
+### Geometría: método de las imágenes
+
+Para cada segmento reflector se calcula la imagen del AP respecto de la recta que lo contiene. El trayecto reflejado es AP → R → punto, donde R es la intersección de la recta imagen–punto con el segmento.
+
+$$d_1 + d_2 = \lvert AP' - P \rvert, \qquad \cos\theta = \frac{h_{AP} + h_P}{d_1 + d_2}$$
+
+| Símbolo | Significado | Unidad |
+| --- | --- | --- |
+| $AP'$ | Imagen del AP respecto de la recta del segmento | m |
+| $d_1$, $d_2$ | Longitudes de los tramos AP–R y R–punto | m |
+| $h_{AP}$, $h_P$ | Distancias del AP y del punto a la recta | m |
+| $\theta$ | Ángulo de incidencia, medido desde la normal | rad |
+
+El rebote vale solo si se cumplen tres condiciones:
+
+1. El AP y el punto están del mismo lado de la recta.
+2. En una columna, ese lado es el exterior de la cara.
+3. R cae en el interior del segmento.
+
+El rebote se calcula sobre el eje del muro, no sobre sus caras.
+
+### Pérdida por reflexión
+
+Se usa el coeficiente de Fresnel de una interfaz aire–material (ITU-R P.2040, ec. 31a). La polarización es TE, con el campo eléctrico paralelo a la pared, que es la de una antena vertical frente a una pared vertical.
+
+$$\Gamma_{TE} = \frac{\cos\theta - \sqrt{\varepsilon_{rc} - \sin^2\theta}}{\cos\theta + \sqrt{\varepsilon_{rc} - \sin^2\theta}}, \qquad L_{refl}\,[\mathrm{dB}] = -20\log_{10}\lvert\Gamma_{TE}\rvert$$
+
+$$\varepsilon_{rc} = \varepsilon' - j\,\frac{17{,}98\,\sigma}{f}, \qquad \varepsilon' = a\,f^{\,b}, \qquad \sigma = c\,f^{\,d}$$
+
+con $f$ en GHz y $\sigma$ en S/m (P.2040, ecs. 57 a 59). Los coeficientes salen de la Tabla 3 de la P.2040-4 y están en `config/materials.json`, en la clave `reflection` de cada material.
+
+| Material | Fila de P.2040 | $a$ | $b$ | $c$ | $d$ |
+| --- | --- | --- | --- | --- | --- |
+| Hormigón (y columnas) | Concrete | 5,24 | 0 | 0,0462 | 0,7822 |
+| Ladrillo macizo | Brick | 3,91 | 0 | 0,0238 | 0,16 |
+| Ladrillo hueco | Brick (supuesto) | 3,91 | 0 | 0,0238 | 0,16 |
+| Placa de yeso | Plasterboard | 2,73 | 0 | 0,0085 | 0,9395 |
+| Vidrio común | Glass | 6,31 | 0 | 0,0036 | 1,3394 |
+
+La P.2040 no tiene una fila para el ladrillo hueco: se usan los valores de Brick. Un material sin `reflection` no refleja, y el cálculo lo avisa.
+
+Valores de $L_{refl}$ que resultan:
+
+| Material | 0° | 45° | 70° |
+| --- | --- | --- | --- |
+| Hormigón | 8,1 dB | 5,8 dB | 2,9 dB |
+| Ladrillo | 9,7 dB | 7,0 dB | 3,5 dB |
+| Placa de yeso | 12,2 dB | 8,9 dB | 4,5 dB |
+| Vidrio | 7,3 dB | 5,3 dB | 2,6 dB |
+
+Varían menos de 0,05 dB entre 2437 y 5180 MHz. En incidencia rasante, $\lvert\Gamma\rvert$ tiende a 1 y la pérdida a 0 dB.
+
+### Pérdida del trayecto reflejado
+
+$$L_{refl,total}\,[\mathrm{dB}] = L_0(d_1 + d_2) + L_{materiales}(AP\text{–}R) + L_{materiales}(R\text{–}P) + L_{refl}$$
+
+Los materiales de cada tramo siguen las reglas de [Materiales de cada tramo](#materiales-de-cada-tramo): el tramo se recorta 2 mm en R, así que el muro donde rebota no se cuenta como cruzado. El trayecto reflejado se suma en potencia con el directo y los difractados, con la misma poda de 30 dB. Antes de calcular los materiales se descarta el rebote si $L_0 + L_{refl}$ ya supera esa poda.
+
+### Ejemplo
+
+Muro de hormigón, AP y punto a 2 m del muro y a 4 m entre sí, 5 GHz (5180 MHz) y 20 dBm, sin ganancias ni cables:
+
+- Directo: $L_0(4\ \mathrm{m}) = 58{,}78$ dB, o sea $-38{,}78$ dBm.
+- Reflejado: $d_1 + d_2 = 5{,}66$ m, $\theta = 45°$, $L_0 = 61{,}79$ dB, $L_{refl} = 5{,}82$ dB y total $67{,}60$ dB.
+- Suma: $-38{,}24$ dBm, es decir 0,54 dB más que el directo solo.
+
+El rebote pesa más donde el directo atraviesa muros y el reflejado no.
+
+### Qué está publicado y qué es convención del proyecto
+
+| Publicado | Convención de este proyecto |
+| --- | --- |
+| Coeficiente de Fresnel TE de una interfaz (ITU-R P.2040, ec. 31a) | Interfaz semi-infinita: no se usa el espesor ni el modelo de losa |
+| Ajuste $\varepsilon' = a f^b$, $\sigma = c f^d$ y Tabla 3 (ITU-R P.2040) | Usar la fila de Brick para el ladrillo hueco |
+| Reflexión en dieléctricos y modelo de dos rayos con trayecto reflejado (Rappaport, secs. 4.5 y 4.6) | Un solo rebote, en planta, sobre el eje del muro, sumado en potencia |
+
 ## Escala de colores
 
 | $P_{RX}$ [dBm] | Color |
@@ -256,12 +337,13 @@ Así, el color puro aparece en el centro de cada intervalo y en los límites se 
 ## Limitaciones
 
 - **Modelo 2D, sin pisos ni alturas.** El plano es una sola planta. No hay pérdida entre pisos y no se consideran las alturas del AP, del receptor ni de los muros y las aberturas.
-- **Antena isotrópica.** La ganancia se aplica igual en todas las direcciones: no hay diagrama de radiación, orientación ni polarización.
+- **Antena isotrópica.** La ganancia se aplica igual en todas las direcciones: no hay diagrama de radiación ni orientación. La polarización solo interviene en el rebote, que supone antenas verticales (TE).
 - **Materiales de tablas publicadas, no medidos.** Los valores de `config/materials.json` salen de fuentes de práctica profesional y no son mediciones propias. El del ladrillo hueco es un supuesto intermedio entre la placa de yeso y el ladrillo macizo, sin fuente directa.
 - **El espesor no cambia la pérdida de penetración.** Cada muro cruzado resta el valor completo de su material, sea de 10 o de 30 cm.
 - **Armadura por niveles como convención.** Los adicionales de 2,5, 5 y 7,5 dB son una convención del proyecto, no una relación medida entre cuantía de acero y decibeles.
 - **Línea recta: sin difracción ni reflexiones.** Solo considera el trayecto directo.
 - **Con difracción: sin reflexiones.** Suma los trayectos que rodean obstáculos, pero no los rebotes.
+- **Con reflexiones: un solo rebote.** No hay trayectos con dos rebotes ni que combinen rebote y difracción.
 
 ### Difracción
 
@@ -280,17 +362,29 @@ Límites del modelo con difracción:
 - **Mismas tablas de materiales.** Las pérdidas de penetración siguen saliendo de valores publicados, no de mediciones.
 - **Sin calibrar.** Los valores son teóricos; no se compararon con mediciones.
 
-### Reflexiones y error esperable
+### Reflexiones
 
-En interiores la señal también llega por rebotes en paredes, techo y piso, que no se calculan. Los modelos multi-pared de este tipo tienen errores típicos de 5 a 10 dB frente a mediciones, y el mapa debe leerse como una estimación orientativa de la cobertura, no como una predicción de la potencia en cada punto.
+El modelo con reflexiones agrega un rebote en muros y columnas. Límites:
+
+- **Un rebote, en planta.** No hay rebotes en techo ni piso, ni dos rebotes en un pasillo.
+- **Rebote sobre el eje.** El punto de rebote está en el eje del muro, no en la cara que mira al AP: con muros de 15 a 30 cm, el trayecto se alarga unos centímetros.
+- **Interfaz semi-infinita.** No se usa el espesor del muro, así que no hay rebotes internos en la losa ni dependencia con el espesor. Con muros delgados de yeso o vidrio, la reflexión real puede ser bastante distinta.
+- **Superficie lisa.** No hay dispersión por rugosidad, aberturas ni muebles.
+- **La armadura no cambia el rebote.** Una columna refleja como hormigón; el acero no se modela.
+- **Borde especular abrupto.** Al salir R del segmento, el rebote desaparece de golpe: el mapa muestra un escalón donde el rebote pesa en la suma. No se suaviza con difracción.
+- **Sin fases.** Igual que en la difracción, se suman potencias.
+
+### Error esperable
+
+En interiores la señal también llega por rebotes en techo y piso y por varios rebotes sucesivos, que no se calculan. Los modelos multi-pared de este tipo tienen errores típicos de 5 a 10 dB frente a mediciones, y el mapa debe leerse como una estimación orientativa de la cobertura, no como una predicción de la potencia en cada punto.
 
 ## Referencias
 
 1. ITU-R, Recomendación P.525-5 (11/2024), *Calculation of free-space attenuation*. Pérdida básica de transmisión en el espacio libre.
 2. H. T. Friis, "A Note on a Simple Transmission Formula", *Proceedings of the IRE*, vol. 34, n.º 5, pp. 254–256, mayo de 1946. Ecuación de transmisión en el espacio libre.
 3. W. Stallings, *Data and Computer Communications*, 10.ª ed., Pearson, 2014. Atenuación, decibeles y dBm.
-4. T. S. Rappaport, *Wireless Communications: Principles and Practice*, 2.ª ed., Prentice Hall, 2002. Modelo de espacio libre (sec. 4.2) y pérdidas por tabiques en interiores (sec. 4.11.1).
-5. ITU-R, Recomendación P.2040-4 (09/2025), *Effects of building materials and structures on radiowave propagation in the range of 1 MHz to 450 GHz*. Efecto de los materiales de construcción.
+4. T. S. Rappaport, *Wireless Communications: Principles and Practice*, 2.ª ed., Prentice Hall, 2002. Modelo de espacio libre (sec. 4.2), reflexión (sec. 4.5), modelo de dos rayos (sec. 4.6) y pérdidas por tabiques en interiores (sec. 4.11.1).
+5. ITU-R, Recomendación P.2040-4 (09/2025), *Effects of building materials and structures on radiowave propagation in the range of 1 MHz to 450 GHz*. Efecto de los materiales de construcción; coeficientes de reflexión TE y TM (ecs. 31a y 31b); ajuste de permitividad y conductividad (ecs. 57 a 59) y Tabla 3.
 
 6. iBwave, *A closer look at attenuation across materials & the 2.4 GHz & 5 GHz bands* (2018). Pérdida por material: «Concrete – Heavy» 22,792 / 44,769 dB. https://blog.ibwave.com/a-closer-look-at-attenuation-across-materials-the-2-4ghz-5ghz-bands/
 7. Interline, *Building Materials and Wi-Fi Signal Loss (2.4 GHz and 5 GHz)*. «Reinforced concrete»: 25–30 dB o más / 50 dB o más. https://interline.pl/Information-and-Tips/Building-Materials-and-Wi-Fi-Signal-Loss-2.4-GHz-and-5-GHz
