@@ -8,7 +8,7 @@ namespace WifiHeat.Core.Simulation;
 /// Normal: unitaria, a la izquierda de A → B. OutwardOnly: en una cara de columna, la normal apunta hacia afuera y solo se
 /// refleja de ese lado; un muro refleja de los dos lados.
 /// </summary>
-public sealed record ReflectingSurface(string WallId, bool IsColumn, Segment2 Segment, Vec2 Normal, bool OutwardOnly, Dielectric Material)
+public sealed record ReflectingSurface(string WallId, bool IsColumn, string MaterialName, Segment2 Segment, Vec2 Normal, bool OutwardOnly, Dielectric Material)
 {
     /// <summary>Distancia con signo (m) del punto a la recta del segmento, positiva del lado de la normal.</summary>
     public double SignedDistance(Vec2 p) => Vec2.Dot(p - Segment.A, Normal);
@@ -45,7 +45,7 @@ public static class ReflectingSurfaces
                     if (footprint.Contains(middle + normal * OutsideProbeM)) normal = normal * -1;
                 }
 
-                surfaces.Add(new ReflectingSurface(rw.Wall.Id, rw.Wall.IsColumn, segment, normal, rw.Footprint is not null, material));
+                surfaces.Add(new ReflectingSurface(rw.Wall.Id, rw.Wall.IsColumn, rw.Material.Name, segment, normal, rw.Footprint is not null, material));
             }
         }
 

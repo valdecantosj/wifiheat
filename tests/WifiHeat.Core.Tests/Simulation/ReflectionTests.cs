@@ -42,6 +42,7 @@ public class ReflectionTests
         Assert.Equal(0, path.Vertices[0].Y, 9);
         Assert.Equal(Math.Sqrt(32), path.LengthM, 9);
         Assert.Equal("W1", path.Reflection!.WallId);
+        Assert.Equal("Espejo", path.Reflection.MaterialName);
         Assert.False(path.Reflection.IsColumn);
         Assert.Equal(45, path.Reflection.IncidenceDeg, 6);
 
@@ -155,11 +156,49 @@ public class ReflectionTests
     [Fact]
     public void The_query_describes_the_bounce()
     {
-        var path = new PathContribution(PathKind.Reflected, [new Vec2(4, 0)], 5.66, 70, 0.3, new PathReflection("W1", false, 6.91, 45));
-        var column = new PathContribution(PathKind.Reflected, [new Vec2(4.5, 5)], 5.39, 72, 0.2, new PathReflection("C1", true, 7.2, 22));
+        var path = new PathContribution(PathKind.Reflected, [new Vec2(4, 0)], 5.66, 70, 0.3, new PathReflection("W1", false, "Espejo", 6.91, 45));
+        var column = new PathContribution(PathKind.Reflected, [new Vec2(4.5, 5)], 5.39, 72, 0.2, new PathReflection("C1", true, "Hormigón", 7.2, 22));
 
         Assert.Equal("Reflejado en muro W1 en (4; 0) · 45° · rebote 6,9 dB", Explanation.DescribePath(path));
         Assert.Equal("Reflejado en columna C1 en (4,5; 5) · 22° · rebote 7,2 dB", Explanation.DescribePath(column));
         Assert.Equal(0, path.Diffractions);
+        Assert.Equal("Muro W1", Explanation.ObstacleName(path.Reflection!));
+        Assert.Equal("Columna C1", Explanation.ObstacleName(column.Reflection!));
+    }
+
+    [Fact]
+    public void The_explanation_lists_every_wall_where_the_signal_bounces()
+    {
+        var ap = new AccessPoint(new Vec2(2, 2));
+        var scene = new SimulationScene([Line("W1", 0, 0, 10, 0), Line("W2", 0, 4, 10, 4)], Catalog);
+        var engine = new PathEngine(scene, ap, Settings, PropagationModel.DiffractionAndReflection);
+
+        PointCalculation c = PointCalculator.Calculate(engine, new Vec2(6, 2));
+        string text = Explanation.Format(c);
+
+        IReadOnlyList<PathContribution> reflections = Explanation.Reflections(c);
+        Assert.Equal(["W1", "W2"], reflections.Select(r => r.Reflection!.WallId).Order());
+        Assert.Contains("Muros donde rebota: 2", text);
+        Assert.Contains("  - Muro W1 · Espejo en (4; 0): 45° desde la normal, rebote 6,9 dB", text);
+        Assert.Contains("  - Muro W2 · Espejo en (4; 4): 45° desde la normal, rebote 6,9 dB", text);
+    }
+
+    [Fact]
+    public void Without_bounces_the_explanation_says_so()
+    {
+        var engine = new PathEngine(new SimulationScene([Line("W1", 0, 0, 10, 0)], Catalog), new AccessPoint(new Vec2(2, 2)), Settings,
+            PropagationModel.DiffractionAndReflection);
+
+        string text = Explanation.Format(PointCalculator.Calculate(engine, new Vec2(6, -2)));
+
+        Assert.Contains("Muros donde rebota: ninguno", text);
+    }
+
+    [Fact]
+    public void The_diffraction_explanation_has_no_bounce_section()
+    {
+        var engine = new PathEngine(new SimulationScene([Line("W1", 0, 0, 10, 0)], Catalog), new AccessPoint(new Vec2(2, 2)), Settings);
+
+        Assert.DoesNotContain("rebota", Explanation.Format(PointCalculator.Calculate(engine, new Vec2(6, 2))));
     }
 }

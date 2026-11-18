@@ -133,7 +133,7 @@ public sealed class PathEngine
                 ReflectingSurface s = _surfaces[path.Surface];
                 double incidence = Math.Acos(Math.Clamp(path.CosIncidence, 0.0, 1.0)) * 180 / Math.PI;
                 result.Add(new PathContribution(PathKind.Reflected, [path.Bounce], path.LengthM, path.LossDb, share,
-                    new PathReflection(s.WallId, s.IsColumn, path.ReflectionDb, incidence)));
+                    new PathReflection(s.WallId, s.IsColumn, s.MaterialName, path.ReflectionDb, incidence)));
                 continue;
             }
 

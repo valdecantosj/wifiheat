@@ -40,6 +40,7 @@ public static class Explanation
 
         sb.AppendLine(F($"L_materiales = {c.WallLossDb:0.00} dB"));
         if (withPaths) AppendPaths(sb, c.Paths!);
+        if (c.Model == PropagationModel.DiffractionAndReflection) AppendReflections(sb, Reflections(c));
         SignalLevel level = SignalScale.Classify(c.ReceivedPowerDbm);
         sb.AppendLine(F($"P_RX = RSSI estimado = {c.ReceivedPowerDbm:0.00} dBm → {level.ColorName} ({level.Label})"));
         sb.Append("Estimación del modelo; no es una medición.");
@@ -62,6 +63,27 @@ public static class Explanation
         {
             double rest = paths.Skip(MaxListedPaths).Sum(p => p.PowerShare);
             sb.AppendLine(F($"  Los otros {paths.Count - MaxListedPaths} aportan el {rest * 100:0.0} %."));
+        }
+    }
+
+    /// <summary>Trayectos reflejados sumados en la consulta, del que más aporta al que menos; vacío sin reflexiones.</summary>
+    public static IReadOnlyList<PathContribution> Reflections(PointCalculation c) =>
+        [.. (c.Paths ?? []).Where(p => p.Kind == PathKind.Reflected && p.Reflection is not null).OrderByDescending(p => p.PowerShare)];
+
+    /// <summary>«Muro W1» o «Columna C1».</summary>
+    public static string ObstacleName(PathReflection r) => $"{(r.IsColumn ? "Columna" : "Muro")} {r.WallId}";
+
+    /// <summary>Todos los rebotes sumados (la lista de trayectos muestra solo los que más aportan).</summary>
+    private static void AppendReflections(StringBuilder sb, IReadOnlyList<PathContribution> reflections)
+    {
+        sb.AppendLine(reflections.Count == 0
+            ? "Muros donde rebota: ninguno (ningún rebote llega al punto o todos quedan debajo de la poda)"
+            : $"Muros donde rebota: {reflections.Count}");
+        foreach (PathContribution p in reflections)
+        {
+            PathReflection r = p.Reflection!;
+            Vec2 at = p.Vertices[0];
+            sb.AppendLine(F($"  - {ObstacleName(r)} · {r.MaterialName} en ({at.X:0.##}; {at.Y:0.##}): {r.IncidenceDeg:0}° desde la normal, rebote {r.LossDb:0.0} dB, trayecto {p.LengthM:0.00} m y {p.LossDb:0.0} dB, {p.PowerShare * 100:0.0} % de la potencia"));
         }
     }
 

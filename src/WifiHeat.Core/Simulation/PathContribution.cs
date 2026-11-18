@@ -14,8 +14,8 @@ public enum PathKind
     Reflected,
 }
 
-/// <summary>Rebote de un trayecto reflejado. LossDb: pérdida por reflexión −20·log10 |Γ|. IncidenceDeg: ángulo desde la normal.</summary>
-public sealed record PathReflection(string WallId, bool IsColumn, double LossDb, double IncidenceDeg);
+/// <summary>Rebote de un trayecto reflejado. MaterialName: material del muro o columna. LossDb: pérdida por reflexión −20·log10 |Γ|. IncidenceDeg: ángulo desde la normal.</summary>
+public sealed record PathReflection(string WallId, bool IsColumn, string MaterialName, double LossDb, double IncidenceDeg);
 
 /// <summary>
 /// Trayecto que aporta potencia en un punto.
